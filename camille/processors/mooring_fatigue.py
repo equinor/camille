@@ -22,7 +22,7 @@ def process(df, **kwargs):
     # Loop the windows
     for w in range(0, n_windows):
         start_idx, end_idx = w * window, (w + 1) * window
-        data = df.ix[:,0].iloc[start_idx:end_idx]
+        data = df.ix[:, 0].iloc[start_idx:end_idx]
 
         if _is_bad_data(data, 100):
             df['bad'].iloc[start_idx:end_idx] = True
@@ -30,7 +30,8 @@ def process(df, **kwargs):
 
         stress = _calculate_stress(data)
         dmg = _calc_damage(stress)
-        df['damage'].iloc[start_idx:end_idx] = dmg
+        dmb_calc = 3600 * 24 * 365 / window_length * dmg
+        df['damage'].iloc[start_idx:end_idx] = dmb_calc
     return df
 
 
@@ -43,9 +44,10 @@ def _calculate_stress(data):
 def _calc_damage(data):
     rf = rainflow.count_cycles(data, left=True, right=True)
     stress_ranges = [tup[0] for tup in rf if tup[0] > 0]
+    cycles = [tup[1] for tup in rf]
     sn = sncurves.get_sn_curve("C1", seawater=True, cp=False)
     N = sn(stress_ranges)
-    damage = sum(N)
+    damage = sum(sorted(cycles/N))
     return damage
 
 

@@ -51,7 +51,7 @@ def test_process():
     d = {'bridle1': refcase}
     df = pd.DataFrame(data=d)
     res = mooring_fatigue.process(df, window=1, fs=5)
-
+    assert res is not None
 
 
 def test_rainflowlib():
