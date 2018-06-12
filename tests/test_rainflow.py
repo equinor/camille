@@ -1,5 +1,8 @@
 import numpy as np
+import pandas as pd
 import rainflow
+
+from camille import mooring_fatigue
 
 refcase = [0.60727647, 0.14653493, 0.19643957, 0.56821631, 0.88833878, 0.29612997,
            0.59539649, 0.6996683, 0.10524973, 0.12334626, 0.68401331, 0.85985292,
@@ -44,6 +47,13 @@ mean_ref = [0.3769, 0.4979, 0.5174, 0.6140, 0.4968, 0.5192,
             0.5695, 0.5140]
 
 
+def test_process():
+    d = {'bridle1': refcase}
+    df = pd.DataFrame(data=d)
+    res = mooring_fatigue.process(df, window=1, fs=5)
+
+
+
 def test_rainflowlib():
     cycles = []
     means = []
@@ -60,3 +70,39 @@ def test_rainflowlib():
     assert np.array_equal(cycles, cycle_ref)
     assert np.array_equal(np.round(means, 4), mean_ref)
     assert np.array_equal(np.round(amplitudes, 4), amp_ref)
+
+
+def test_calc_damage():
+    damage = mooring_fatigue._calc_damage(refcase)
+    assert damage == 1.0400195722392278e+18
+
+
+def test_nan():
+    data = [np.nan, 0, 0, 2, np.nan]
+    is_bad = mooring_fatigue._is_bad_data(data, 100)
+    assert is_bad
+
+
+def test_valid():
+    data = [1, 0, 0, 2, 1]
+    is_bad = mooring_fatigue._is_bad_data(data, 100)
+    assert not is_bad
+
+
+def test_sudden_jump():
+    data = [0, 0, 0, 1000, 0]
+    is_bad = mooring_fatigue._is_bad_data(data, 100)
+    assert is_bad
+
+
+def test_constant():
+    data = [1, 1, 1, 1, 1]
+    is_bad = mooring_fatigue._is_bad_data(data, 100)
+    assert is_bad
+
+
+def test_calculate_stress():
+    signal = np.array([2, 1, 3, 2, 4])
+    ref = np.array([0.07307389, 0.03653695, 0.10961084, 0.07307389, 0.14614779])
+    stress = mooring_fatigue._calculate_stress(signal)
+    assert np.allclose(stress, ref)
