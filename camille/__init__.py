@@ -2,6 +2,8 @@
 
 """
 
-from processors import rolling
+from __future__ import absolute_import
+
+from .processors import rolling
 
 __version__ = '0.0.1'
