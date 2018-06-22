@@ -2,7 +2,7 @@
 import unittest
 import pandas as pd
 
-class TestCamille(unittest.TestCase):
+class TestRolling(unittest.TestCase):
 
     def test_rolling(self):
         from camille import rolling
