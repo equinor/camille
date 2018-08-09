@@ -17,4 +17,6 @@ setup(
     description="Camille Wind",
     install_requires=_requirements,
     test_suite='tests',
+    setup_requires=['pytest-runner'],
+    tests_require=['pytest']
 )
