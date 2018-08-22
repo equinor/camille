@@ -1,5 +1,6 @@
 from pandas import DataFrame
 
+
 def process(df, **kwargs):
     options = ('window', 'interpolation')
     if not all(key in options for key in kwargs.keys()):
