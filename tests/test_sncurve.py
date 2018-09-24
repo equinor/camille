@@ -1,6 +1,7 @@
 #!/usr/bin/env python
-from camille.utils.sncurves import sn_curve
 import numpy as np
+
+from camille.utils.sncurves import sn_curve
 
 def test_scalar_params():
     x = [ 12.73, 47.83, 41.05, 30.05, 24.58 ]
@@ -14,6 +15,7 @@ def test_scalar_params():
                        k=0 )
 
     assert np.allclose(result, expected)
+
 
 def test_array_params():
     x = [ 22.49, 25.13, 4.83, 30.44]
