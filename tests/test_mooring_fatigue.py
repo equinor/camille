@@ -74,7 +74,3 @@ def test_calculate_stress():
                     0.07307389, 0.14614779])
     stress = mooring_fatigue._calculate_stress(signal)
     assert np.allclose(stress, ref)
-
-
-if __name__ == '__main__':
-    unittest.main()

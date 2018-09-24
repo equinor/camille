@@ -1,17 +1,13 @@
 #!/usr/bin/env python
-import unittest
 import pandas as pd
+import numpy as np
 
-class TestRolling(unittest.TestCase):
+from camille import rolling
 
-    def test_rolling(self):
-        from camille import rolling
-        df = pd.DataFrame(list(range(100)))
-        rolled = rolling.process(df)
-        self.assertEqual(100, len(rolled))
-        self.assertEqual(sum(range(90,100))/10.,
-                         rolled[0][99])
+def test_rolling():
+    df = pd.DataFrame(list(range(100)))
+    rolled = rolling.process(df)
 
-
-if __name__ == '__main__':
-    unittest.main()
+    assert np.allclose(100, len(rolled))
+    assert np.allclose(sum(range(90,100))/10.,
+                rolled[0][99])
