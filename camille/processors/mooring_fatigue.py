@@ -21,7 +21,7 @@ def process(df, **kwargs):
 
     for w in range(0, n_windows):
         start_idx, end_idx = w * window, (w + 1) * window
-        data = df.ix[:, 0].iloc[start_idx:end_idx]
+        data = df.iloc[start_idx:end_idx, 0]
 
         if _is_bad_data(data, 100):
             damage[w] = np.nan
