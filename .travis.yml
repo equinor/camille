@@ -12,3 +12,11 @@ install:
 
 script:
   - python3 setup.py test
+
+deploy:
+  - provider: pypi
+    user: statoil-travis
+    password:
+      secure: ...
+    on:
+      tags: true
