@@ -1,14 +1,30 @@
 language: python
+
 python:
-    - "3.5"
-    - "3.6"
-    - "3.7-dev"
+  - 3.5
+  - 3.6
 
 os:
   - linux
+
+matrix:
+  fast_finish: true
+  include:
+      - python: 3.7
+        dist: xenial
+        sudo: true
 
 install:
   - pip3 install -r requirements.txt
 
 script:
   - python3 setup.py test
+
+deploy:
+  - provider: pypi
+    distributions: sdist bdist_wheel
+    on:
+      all_branches: true
+    user: statoil-travis
+    password:
+      secure: sJXpjdUnYrJz4H0x7ryxNuPwNwqUiC9JqDXsOnIZ9bATvIPJkjVIj/DbQD54QBGUnsXUPTtX5vexOEtEW8iQ9WJ/oU0Iu92Rlr7I8lianhjLw+Prk55MRVuCFCik9YdChOzOfGRdMIpXMvMzviudxa8MwlgdmTQoVMv+7uhV9N0iLrIXlgGokqCnMbvhewvbCYd8NqgwSqMbOPjUFkikB5vmL1MydWKXFd+TGluWTlF5COTQf/F7Gh0SL1gBsR4/oVewpSFTpbXsEzVwC+7IxMth+ny+SCfkBkSQ6QY7JKxwsyExhAz0hpruQ2zWd2mPJo0UNla8weU2U6J4YJTkrforBRydAkX4HbCVTsf0UTX4Ocf7pOd6WTqUR3S8jE8nkqBuBm/PzG1xSznr2fO2LZIrjfC3PEl817uqnEkqLal3H7ZtnY7I87O76BvAGS9N64MMekwjm1NAcFW0Tyl2Qr63CpsTkzNdIDXBxuDjjXb+IaW0Ieb4C8hIezkvoNqjtd3u0Tw9og51DCC4Uz4W7m+A/1D3lE7FZOb7lx1fFxcrfVEqBKkum+Sm0DPDd1Rzpilajj/D+GX1+/aoEcNOGlIfNzi+iPUU1ZniZbotuOQzg+XTPnV2RaAMGFBd/sY25usvopmjEtjuNJxPHDmYwx25fe+J1FAIzAJmGBOm2wM=
