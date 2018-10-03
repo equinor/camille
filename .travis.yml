@@ -21,7 +21,6 @@ script:
   - python3 setup.py test
 
 deploy:
-  matrix:
   - provider: pypi
     user: statoil-travis
     password:
