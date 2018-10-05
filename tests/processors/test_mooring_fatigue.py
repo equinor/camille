@@ -2,7 +2,7 @@
 import numpy as np
 import pandas as pd
 
-from camille import mooring_fatigue
+from camille.process import mooring_fatigue
 
 refcase = [0.60727647, 0.14653493, 0.19643957, 0.56821631, 0.88833878, 0.29612997,
            0.59539649, 0.6996683,  0.10524973, 0.12334626, 0.68401331, 0.85985292,

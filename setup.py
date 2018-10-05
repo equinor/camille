@@ -10,7 +10,8 @@ setup(
     name='camille',
     packages=[
         'camille',
-        'camille/processors',
+        'camille/process',
+        'camille/util',
     ],
     author='Software Innovation Bergen, Equinor ASA',
     author_email='fg_gpl@equinor.com',

@@ -2,7 +2,7 @@
 import pandas as pd
 import numpy as np
 
-from camille import rolling
+from camille.process import rolling
 
 def test_rolling():
     df = pd.DataFrame(list(range(100)))

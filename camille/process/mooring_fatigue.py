@@ -2,8 +2,8 @@ import math
 
 import numpy as np
 import rainflow
-from camille.utils.sncurves import sn_curve
 import pandas as pd
+from camille.util import sn_curve
 
 def process(df, **kwargs):
     options = ('window', 'fs')

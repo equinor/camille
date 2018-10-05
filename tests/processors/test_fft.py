@@ -2,7 +2,7 @@
 import pandas as pd
 import numpy as np
 
-from camille import fft
+from camille.process import fft
 
 def test_fft():
     df = pd.DataFrame(np.random.normal(size=(100)))
@@ -22,4 +22,3 @@ def test_fft2D():
     signal = fft.process(spectrum, **inv_config).apply(np.real)
 
     assert np.allclose(df, signal)
-

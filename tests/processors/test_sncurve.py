@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import numpy as np
 
-from camille.utils.sncurves import sn_curve
+from camille.util import sn_curve
 
 def test_scalar_params():
     x = [ 12.73, 47.83, 41.05, 30.05, 24.58 ]
