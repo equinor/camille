@@ -1,0 +1,1 @@
+from .bazefetcher import bazefetcher
