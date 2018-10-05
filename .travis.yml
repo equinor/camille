@@ -9,6 +9,10 @@ os:
 
 install:
   - pip3 install -r requirements.txt
+  - pip3 install bandit
+
+before_script:
+  - bandit -c bandit.yml -r camille
 
 script:
   - python3 setup.py test
