@@ -73,6 +73,16 @@ def bazefetcher(root, tzinfo=pytz.utc):
         df.set_index('time', inplace=True)
         df.index = df.index.tz_localize(tzinfo)
 
-        return df.value
+        try:
+            ts = df.value
+            ts = ts[start_date:end_date]
+        except KeyError:
+            pass
+
+        if ts.empty:
+            raise ValueError('No data for {} between {} and {}'.format(
+                tag, str(start_date), str(end_date)))
+
+        return ts
 
     return bazefetcher_internal
