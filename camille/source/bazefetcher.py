@@ -17,6 +17,13 @@ def _fn_start_date(fn):
     return datetime.datetime.strptime(date_str, date_fmt)
 
 
+def _fn_end_date(fn):
+    date_str = fn.split('_')[-1] # extract start date
+    date_str = date_str.replace('.', '') # UTC offset does not support '.'
+    date_fmt = "%Y-%m-%dT%H%M%S%zjsongz"
+    return datetime.datetime.strptime(date_str, date_fmt)
+
+
 def _safe_read(fn, **kwargs):
     """
     TODO: Manually infer pandas read function
@@ -48,7 +55,8 @@ def bazefetcher(root, tzinfo=pytz.utc):
 
         files = [
             os.path.join(tag_root, fn) for fn in os.listdir(tag_root)
-            if start_date <= _fn_start_date(fn) <= end_date]
+            if _fn_start_date(fn) <= end_date
+            and start_date <= _fn_end_date(fn)]
 
         if not files:
             raise ValueError('No data for {} between {} and {}'.format(
@@ -65,6 +73,16 @@ def bazefetcher(root, tzinfo=pytz.utc):
         df.set_index('time', inplace=True)
         df.index = df.index.tz_localize(tzinfo)
 
-        return df.value
+        try:
+            ts = df.value
+            ts = ts[start_date:end_date]
+        except KeyError:
+            pass
+
+        if ts.empty:
+            raise ValueError('No data for {} between {} and {}'.format(
+                tag, str(start_date), str(end_date)))
+
+        return ts
 
     return bazefetcher_internal

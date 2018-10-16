@@ -21,24 +21,28 @@ def test_one_day_one_file(tmpdir):
                          freq='H', tz='utc' )
     ts = pd.Series(np.random.randn(len(rng)), index=rng)
 
-    bazeout = camille.output.bazefetcher( tmpdir.dirname )
+    bazeout = camille.output.bazefetcher( str(tmpdir) )
     bazeout( ts, 'test', ts.index[0], ts.index[-1] )
 
-    assert len( os.listdir( tmpdir.dirname + '/test' ) ) == 1
-    assert is_correctly_loaded_from_basefetcher( ts, 'test', tmpdir.dirname )
+    assert os.listdir( os.path.join( str(tmpdir), 'test' ) ) \
+        == ['test_2018-01-01T00.00.00+00.00_2018-01-02T00.00.00+00.00.json.gz']
+    assert is_correctly_loaded_from_basefetcher( ts, 'test', str(tmpdir) )
 
 
 def test_two_days_two_files(tmpdir):
     rng = pd.date_range( start='1/1/2018T23:00',
                          end='1/2/2018T02:00',
                          freq='H', tz='utc' )
-    ts = pd.Series(np.random.randn(len(rng)), index=rng)
+    ts = pd.Series(np.array([1,2,3,4]), index=rng)
 
-    bazeout = camille.output.bazefetcher( tmpdir.dirname )
+    bazeout = camille.output.bazefetcher( str(tmpdir) )
     bazeout( ts, 'test', ts.index[0], ts.index[-1] )
 
-    assert len( os.listdir( os.path.join( tmpdir.dirname, 'test' ) ) ) == 2
-    assert is_correctly_loaded_from_basefetcher( ts, 'test', tmpdir.dirname )
+    assert os.listdir( os.path.join( str(tmpdir), 'test' ) ) \
+        == ['test_2018-01-01T00.00.00+00.00_2018-01-02T00.00.00+00.00.json.gz',
+            'test_2018-01-02T00.00.00+00.00_2018-01-03T00.00.00+00.00.json.gz']
+
+    assert is_correctly_loaded_from_basefetcher( ts, 'test', str(tmpdir) )
 
 
 def test_output_interval(tmpdir):
@@ -50,10 +54,10 @@ def test_output_interval(tmpdir):
     start = datetime.datetime( 2018, 1, 1, 13, 30, tzinfo=pytz.utc )
     end = datetime.datetime( 2018, 1, 1, 15, 30, tzinfo=pytz.utc )
 
-    bazeout = camille.output.bazefetcher( tmpdir.dirname )
+    bazeout = camille.output.bazefetcher( str(tmpdir) )
     bazeout( ts, 'test', start, end )
 
-    bazein = camille.source.bazefetcher( tmpdir.dirname )
+    bazein = camille.source.bazefetcher( str(tmpdir) )
     result = bazein( 'test', ts.index[0], ts.index[-1] )
 
     assert result.size == 2

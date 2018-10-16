@@ -3,7 +3,7 @@ import datetime
 import pytz
 import pandas as pd
 
-def to_midnight_utc(timestamp):
+def _to_midnight_utc(timestamp):
     """ Copied from bazefetcher
 
     Converts a timestamp or date to an UTC timestamp. Dates are converted to
@@ -24,14 +24,17 @@ def to_midnight_utc(timestamp):
     return timestamp
 
 
-def daterange(start_date, end_date):
+def _daterange(start_date, end_date):
+    start_date = _to_midnight_utc( start_date.date() )
+    end_date = _to_midnight_utc( end_date.date() )
+
     for d in range(int((end_date - start_date).days)+1):
         start = start_date + datetime.timedelta(d)
         end = start + datetime.timedelta(1)
         yield (start,end)
 
 
-def generate_tag_location(
+def _generate_tag_location(
     root, tag_name, start_date, end_date, full_path=True, suffix=".json"
     ):
     """ Copied from bazefetcher
@@ -42,8 +45,8 @@ def generate_tag_location(
      """
     filename = "{}_{}_{}{}".format(
         tag_name,
-        to_midnight_utc(start_date).isoformat().replace(":", "."),
-        to_midnight_utc(end_date).isoformat().replace(":", "."),
+        _to_midnight_utc(start_date).isoformat().replace(":", "."),
+        _to_midnight_utc(end_date).isoformat().replace(":", "."),
         suffix)
     directory_name = tag_name
     path = os.path.join(directory_name, filename)
@@ -67,16 +70,18 @@ def bazefetcher(root):
 
         series = series[start:end]
 
-        for s, e in daterange( start, end ):
+        eps = datetime.timedelta(microseconds=1)
 
-            tag_path = generate_tag_location( root,
+        for s, e in _daterange( start, end ):
+
+            tag_path = _generate_tag_location( root,
                                               tag,
                                               s,
                                               e,
                                               full_path=True,
                                               suffix='.json.gz' )
 
-            ts = series[s:e]
+            ts = series[s:e-eps]
             ts = pd.DataFrame( { 't':ts.index, 'v':ts.values } )
 
             if not os.path.exists(os.path.dirname(tag_path)):
