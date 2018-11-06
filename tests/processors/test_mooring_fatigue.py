@@ -2,7 +2,10 @@
 import numpy as np
 import pandas as pd
 
-from camille.process import mooring_fatigue
+from camille import process
+from camille.process.mooring_fatigue import _calculate_stress
+from camille.process.mooring_fatigue import _calc_damage
+from camille.process.mooring_fatigue import _is_bad_data
 
 refcase = [0.60727647, 0.14653493, 0.19643957, 0.56821631, 0.88833878, 0.29612997,
            0.59539649, 0.6996683,  0.10524973, 0.12334626, 0.68401331, 0.85985292,
@@ -34,36 +37,36 @@ mooring_fatigue_ref = [6.4859627078e-009, 3.5345447785e-009, 3.9938747139e-009,
 
 def test_process():
     series = pd.Series(data=refcase, name='bridle1')
-    res = mooring_fatigue.process(series, window=1, fs=5)
+    res = process.mooring_fatigue(series, window=1, fs=5)
     assert np.allclose( res.values.T, mooring_fatigue_ref )
 
 
 def test_calc_damage():
-    damage = mooring_fatigue._calc_damage(refcase)
+    damage = _calc_damage(refcase)
     assert np.allclose( damage, 1.34471920175778e-010 )
 
 
 def test_nan():
     data = [np.nan, 0, 0, 2, np.nan]
-    is_bad = mooring_fatigue._is_bad_data(data, 100)
+    is_bad = _is_bad_data(data, 100)
     assert is_bad
 
 
 def test_valid():
     data = [1, 0, 0, 2, 1]
-    is_bad = mooring_fatigue._is_bad_data(data, 100)
+    is_bad = _is_bad_data(data, 100)
     assert not is_bad
 
 
 def test_sudden_jump():
     data = [0, 0, 0, 1000, 0]
-    is_bad = mooring_fatigue._is_bad_data(data, 100)
+    is_bad = _is_bad_data(data, 100)
     assert is_bad
 
 
 def test_constant():
     data = [1, 1, 1, 1, 1]
-    is_bad = mooring_fatigue._is_bad_data(data, 100)
+    is_bad = _is_bad_data(data, 100)
     assert is_bad
 
 
@@ -71,5 +74,5 @@ def test_calculate_stress():
     signal = np.array([2, 1, 3, 2, 4])
     ref = np.array([0.07307389, 0.03653695, 0.10961084,
                     0.07307389, 0.14614779])
-    stress = mooring_fatigue._calculate_stress(signal)
+    stress = _calculate_stress(signal)
     assert np.allclose(stress, ref)
