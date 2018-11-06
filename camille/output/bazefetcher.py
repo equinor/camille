@@ -60,8 +60,13 @@ def bazefetcher(root):
         raise ValueError('{} is not a directory'.format(root))
 
     def bazefetcher_internal(
-        series, tag=None, start=None, end=None
-        ):
+            series, tag=None, start=None, end=None):
+        if tag is None:
+            raise ValueError('tag must be specified')
+
+        if start is None: start = series.index[0].to_pydatetime()
+        if end is None: end = series.index[-1].to_pydatetime()
+
         if start.tzinfo is None or end.tzinfo is None:
             raise ValueError('dates must be timezone aware')
 

@@ -57,12 +57,14 @@ def bazefetcher(root, tzinfo=pytz.utc):
             os.path.join(tag_root, fn) for fn in os.listdir(tag_root)
             if _fn_start_date(fn) <= end_date
             and start_date <= _fn_end_date(fn)]
+        files.sort()
 
-        if not files:
+        L = [_safe_read(fn) for fn in files]
+        df = pd.concat(L, sort=True) if len(L) > 0 else None
+
+        if not files or df is None or df.empty:
             raise ValueError('No data for {} between {} and {}'.format(
                 tag, str(start_date), str(end_date)))
-
-        df = pd.concat((_safe_read(fn) for fn in files), sort=True)
 
         df.rename(columns={
             't': 'time',
@@ -74,8 +76,9 @@ def bazefetcher(root, tzinfo=pytz.utc):
         df.index = df.index.tz_localize(tzinfo)
 
         try:
+            eps = datetime.timedelta(microseconds=1)
             ts = df.value
-            ts = ts[start_date:end_date]
+            ts = ts[start_date:end_date - eps]
         except KeyError:
             pass
 
