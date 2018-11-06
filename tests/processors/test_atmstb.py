@@ -2,8 +2,7 @@
 import pandas as pd
 import numpy as np
 
-from camille.process import atm_stb, delta_temp
-
+from camille import process
 
 amb_data = [0.70131019, 0.89018502, 0.65405949, 0.3857633,  0.37878664,
             0.78061511, 0.7237867,  0.81625648, 0.95503992, 0.03529543,
@@ -43,8 +42,8 @@ def test_process():
     index = pd.date_range('1/1/2018', periods=5, freq='20T')
     sea = pd.Series(data=sea_data, index=index)
 
-    res_delta = delta_temp.process(amb, sea)
-    res_atmstb = atm_stb.process(res_delta)
+    res_delta = process.delta_temp(amb, sea)
+    res_atmstb = process.atm_stb(res_delta)
 
     delta = res_delta.tolist()
     atmstb = res_atmstb.tolist()
