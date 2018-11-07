@@ -5,7 +5,7 @@ import rainflow
 import pandas as pd
 from camille.util import sn_curve
 
-def process(df, **kwargs):
+def process(series, **kwargs):
     options = ('window', 'fs')
     if not all([key in options for key in kwargs.keys()]):
         raise ArgumentError('Unknown argument(s) {}'
@@ -13,7 +13,7 @@ def process(df, **kwargs):
     window_length = kwargs.get('window', 3600)
     fs = kwargs.get('fs', 5)
 
-    samples = len(df)
+    samples = series.size
     window = math.ceil(window_length * fs)
     n_windows = math.floor(samples / window)
 
@@ -21,7 +21,7 @@ def process(df, **kwargs):
 
     for w in range(0, n_windows):
         start_idx, end_idx = w * window, (w + 1) * window
-        data = df.iloc[start_idx:end_idx, 0]
+        data = series.iloc[start_idx:end_idx]
 
         if _is_bad_data(data, 100):
             damage[w] = np.nan
@@ -33,7 +33,7 @@ def process(df, **kwargs):
         dmb_calc = seconds_per_year / window_length * dmg
         damage[w] = dmb_calc
 
-    return pd.DataFrame(damage)
+    return pd.Series(damage)
 
 
 def _calculate_stress(data):
