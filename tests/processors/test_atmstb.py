@@ -26,27 +26,31 @@ amb_data = [0.70131019, 0.89018502, 0.65405949, 0.3857633,  0.37878664,
             0.62931009, 0.8421696,  0.28500048, 0.43077346, 0.16602324]
 
 sea_data = [6.6139271586872025, 3.43404056610179853, 1.6886409108277656,
-            0.5469472231030251, -2.5091739563307742]
+            0.5469472231030251, -2.5091739563307742, np.nan]
 
-ref_delta = [6.0037579731872025013, 2.987460655601798,
-             1.018932128827765515,  -0.018480130396974825,
-             -2.983759860330774]
-
-ref_atmstb = ['Very Unstable', 'Unstable', 'Slightly Unstable',
-              'Neutral',       'Stable']
+ref_index = pd.date_range('1/1/2018', periods=6, freq='20T')
+ref_delta = pd.Series(
+    [
+        6.0037579731872025013, 2.987460655601798, 1.018932128827765515,
+        -0.018480130396974825, -2.9837598603307742, np.nan,
+    ],
+    index=ref_index, name='delta_temp')
+ref_atmstb = pd.Series(
+    [
+        'Very Unstable', 'Unstable', 'Slightly Unstable', 'Neutral', 'Stable',
+        'Missing Data',
+    ],
+    index=ref_index, name='atm_stb')
 
 
 def test_process():
     index = pd.date_range('1/1/2018', periods=100, freq='T')
     amb = pd.Series(data=amb_data, index=index)
-    index = pd.date_range('1/1/2018', periods=5, freq='20T')
+    index = pd.date_range('1/1/2018', periods=6, freq='20T')
     sea = pd.Series(data=sea_data, index=index)
 
     res_delta = process.delta_temp(amb, sea)
     res_atmstb = process.atm_stb(res_delta)
 
-    delta = res_delta.tolist()
-    atmstb = res_atmstb.tolist()
-
-    assert np.allclose(delta, ref_delta)
-    assert atmstb == ref_atmstb
+    pd.testing.assert_series_equal(res_delta, ref_delta)
+    pd.testing.assert_series_equal(res_atmstb, ref_atmstb)
