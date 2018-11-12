@@ -6,7 +6,9 @@ setup(
     name='camille',
     packages=[
         'camille',
+        'camille/output',
         'camille/process',
+        'camille/source',
         'camille/util',
     ],
     author='Software Innovation Bergen, Equinor ASA',
