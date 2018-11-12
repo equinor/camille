@@ -7,6 +7,12 @@ import pytz
 import pandas as pd
 
 
+date_pattern = r'[0-9]{4}-[0-9]{2}-[0-9]{2}'
+time_pattern = r'[0-9]{2}\.[0-9]{2}\.[0-9]{2}\+[0-9]{2}\.[0-9]{2}'
+dt_pattern = date_pattern + 'T' + time_pattern
+fn_tail_patter = '_' + dt_pattern + '_' + dt_pattern + r'\.json\.gz$'
+
+
 def _fn_start_date(fn):
     # File names are on the form:
     #     |- start_date ----------| |- end_date ------------|
@@ -53,10 +59,14 @@ def bazefetcher(root, tzinfo=pytz.utc):
         if not os.path.isdir(tag_root):
             raise ValueError('Tag {} not found'.format(tag))
 
+        fn_regex = re.compile(tag + fn_tail_patter)
+
         files = [
             os.path.join(tag_root, fn) for fn in os.listdir(tag_root)
-            if _fn_start_date(fn) <= end_date
-            and start_date <= _fn_end_date(fn)]
+            if fn_regex.match(fn)
+                and _fn_start_date(fn) <= end_date
+                and start_date <= _fn_end_date(fn)
+        ]
         files.sort()
 
         L = [_safe_read(fn) for fn in files]
