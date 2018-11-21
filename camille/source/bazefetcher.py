@@ -84,6 +84,7 @@ def bazefetcher(root, tzinfo=pytz.utc):
         df.time = pd.to_datetime(df.time, unit='ms')
         df.set_index('time', inplace=True)
         df.index = df.index.tz_localize(tzinfo)
+        df.sort_index(inplace=True)
 
         try:
             eps = datetime.timedelta(microseconds=1)
