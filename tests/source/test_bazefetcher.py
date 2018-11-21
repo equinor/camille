@@ -14,6 +14,8 @@ baze = bazefetcher('tests/test_data/baze')
 t12_31_22 = datetime(2029, 12, 31, 22, tzinfo=utc)
 t12_31_23 = datetime(2029, 12, 31, 23, tzinfo=utc)
 t1_1 = datetime(2030, 1, 1, tzinfo=utc)
+t1_2 = datetime(2030, 1, 2, tzinfo=utc)
+t1_4 = datetime(2030, 1, 4, tzinfo=utc)
 t1_1_1 = datetime(2030, 1, 1, 1, tzinfo=utc)
 t1_3 = datetime(2030, 1, 3, tzinfo=utc)
 t1_3_15 = datetime(2030, 1, 3, 15, tzinfo=utc)
@@ -46,14 +48,14 @@ def assert_correct(v, func, t0, t1):
     assert (t1 - v.index[-1]).to_pytimedelta() < timedelta(seconds=2)
 
 def test_read_two_days():
-    sin_b = baze('Sin-T60s-SR1hz', t1_1, t1_3)
-    tan_b = baze('Tan-T60s-SR1hz', t1_1, t1_3)
+    sin_b = baze('Sin-T60s-SR1hz', t1_2, t1_4)
+    tan_b = baze('Tan-T60s-SR1hz', t1_2, t1_4)
     assert len(sin_b) == len(tan_b) == 172800 # 2 days
-    pd.testing.assert_series_equal(sin_b, sin(t1_1, t1_3))
-    pd.testing.assert_series_equal(tan_b, tan(t1_1, t1_3))
-    assert sin_b.index[0] == t1_1
-    assert sin_b.index[-1] < t1_3
-    assert (t1_3 - sin_b.index[-1]).to_pytimedelta() < timedelta(seconds=2)
+    pd.testing.assert_series_equal(sin_b, sin(t1_2, t1_4))
+    pd.testing.assert_series_equal(tan_b, tan(t1_2, t1_4))
+    assert sin_b.index[0] == t1_2
+    assert sin_b.index[-1] < t1_4
+    assert (t1_4 - sin_b.index[-1]).to_pytimedelta() < timedelta(seconds=2)
 
 def test_read_partially_before():
     cos_b = baze('Cos-T60s-SR1hz', t12_31_23, t1_1_1)
