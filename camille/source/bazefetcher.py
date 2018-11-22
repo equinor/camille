@@ -73,8 +73,7 @@ def bazefetcher(root, tzinfo=pytz.utc):
         df = pd.concat(L, sort=True) if len(L) > 0 else None
 
         if not files or df is None or df.empty:
-            raise ValueError('No data for {} between {} and {}'.format(
-                tag, str(start_date), str(end_date)))
+            df = pd.DataFrame(columns=('t', 'v'))
 
         df.rename(columns={
             't': 'time',
@@ -92,10 +91,6 @@ def bazefetcher(root, tzinfo=pytz.utc):
             ts = ts[start_date:end_date - eps]
         except KeyError:
             pass
-
-        if ts.empty:
-            raise ValueError('No data for {} between {} and {}'.format(
-                tag, str(start_date), str(end_date)))
 
         return ts
 

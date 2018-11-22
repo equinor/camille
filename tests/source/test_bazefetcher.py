@@ -90,18 +90,15 @@ def test_read_covering_authored():
     pd.testing.assert_series_equal(i04_status, i04_status_b)
 
 def test_read_empty_tag():
-    with pytest.raises(ValueError) as excinfo:
-        authored('Empty-Tag', t1_1, t1_5)
-    assert ('No data for {} between {} and {}'
-        .format('Empty-Tag', t1_1, t1_5)
-        in str(excinfo.value))
+    empty_tag = authored('Empty-Tag', t1_1, t1_5)
+    assert empty_tag.empty
+    assert empty_tag.name == 'value'
 
-def test_read_outside():
-    with pytest.raises(ValueError) as excinfo:
-        baze('Cos-T60s-SR1hz', t12_31_22, t12_31_23)
-    assert ('No data for {} between {} and {}'
-        .format('Cos-T60s-SR1hz', t12_31_22, t12_31_23)
-        in str(excinfo.value))
+def test_read_outside_timeseries_in_file():
+    empty_time_series = baze('Cos-T60s-SR1hz', t12_31_22, t12_31_23)
+    assert empty_time_series.empty
+    assert empty_time_series.name == 'value'
+
 
 def test_non_existing_tag():
     with pytest.raises(ValueError) as excinfo:
