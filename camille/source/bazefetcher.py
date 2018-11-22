@@ -1,8 +1,6 @@
 import os
 import re
 import datetime
-import json
-import gzip
 import pytz
 import pandas as pd
 
@@ -10,7 +8,7 @@ import pandas as pd
 date_pattern = r'[0-9]{4}-[0-9]{2}-[0-9]{2}'
 time_pattern = r'[0-9]{2}\.[0-9]{2}\.[0-9]{2}\+[0-9]{2}\.[0-9]{2}'
 dt_pattern = date_pattern + 'T' + time_pattern
-fn_tail_patter = '_' + dt_pattern + '_' + dt_pattern + r'\.json\.gz$'
+fn_tail_pattern = '_' + dt_pattern + '_' + dt_pattern + r'\.json\.gz$'
 
 
 def _fn_start_date(fn):
@@ -59,7 +57,7 @@ def bazefetcher(root, tzinfo=pytz.utc):
         if not os.path.isdir(tag_root):
             raise ValueError('Tag {} not found'.format(tag))
 
-        fn_regex = re.compile(tag + fn_tail_patter)
+        fn_regex = re.compile(tag + fn_tail_pattern)
 
         files = [
             os.path.join(tag_root, fn) for fn in os.listdir(tag_root)
