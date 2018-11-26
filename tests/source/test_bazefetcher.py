@@ -93,12 +93,13 @@ def test_read_empty_tag():
     empty_tag = authored('Empty-Tag', t1_1, t1_5)
     assert empty_tag.empty
     assert empty_tag.name == 'value'
+    assert empty_tag.index.name == 'time'
 
 def test_read_outside_timeseries_in_file():
     empty_time_series = baze('Cos-T60s-SR1hz', t12_31_22, t12_31_23)
     assert empty_time_series.empty
     assert empty_time_series.name == 'value'
-
+    assert empty_time_series.index.name == 'time'
 
 def test_non_existing_tag():
     with pytest.raises(ValueError) as excinfo:
