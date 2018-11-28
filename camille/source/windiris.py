@@ -13,10 +13,9 @@ def _sqlite(start_date, end_date, connection, installation):
                                 'start': str(start_date.replace(tzinfo=None)),
                                 'end': str(end_date.replace(tzinfo=None))
                            },
-                           index_col='Timestamp',
                            parse_dates={
                                 'Timestamp': {'utc': True}
-                           }).sort_index()
+                           })
 
     return df
 

@@ -30,29 +30,33 @@ def extrapolate_windspeed(hgt, shear_coeff, ref_windspeed, ref_hgt):
     return ref_windspeed * pow(hgt / ref_hgt, shear_coeff)
 
 
+def temp_ws(sensors, ws_upr, ws_lwr, shear_coeff, hub_hgt, hgt_upr, hgt_lwr):
+    return ws_lwr * pow(hub_hgt / hgt_lwr, shear_coeff)
+
+
 def horiz_windspeed(df, dist, hub_hgt, lidar_hgt, azimuths, zeniths):
     sensors = df.index.tolist()
-    pitch_upr = (df[0].pitch + df[1].pitch) / 2.0
-    pitch_lwr = (df[2].pitch + df[3].pitch) / 2.0
-    roll_upr = (df[0].roll + df[1].roll) / 2.0
-    roll_lwr = (df[2].roll + df[3].roll) / 2.0
+    pitch_upr = (df.iloc[0].pitch + df.iloc[1].pitch) / 2.0
+    pitch_lwr = (df.iloc[2].pitch + df.iloc[3].pitch) / 2.0
+    roll_upr = (df.iloc[0].roll + df.iloc[1].roll) / 2.0
+    roll_lwr = (df.iloc[2].roll + df.iloc[3].roll) / 2.0
 
     beam_hgts = [
         sample_hgt(s, hub_hgt, lidar_hgt, dist,
-                   df[s].pitch, df[s].roll, azimuths[s], zeniths[s])
+                   df.iloc[s].pitch, df.iloc[s].roll, azimuths[s], zeniths[s])
         for s in sensors
     ]
-    hgt_upr = (hgts[0] + hgts[1]) * 0.5
-    hgt_lwr = (hgts[2] + hgts[3]) * 0.5
+    hgt_upr = (beam_hgts[0] + beam_hgts[1]) * 0.5
+    hgt_lwr = (beam_hgts[2] + beam_hgts[3]) * 0.5
 
-    rws = [df[s].radial_windspeed for s in sensors]
+    rws = [df.iloc[s].radial_windspeed for s in sensors]
     ws_upr = planar_windspeed(
         rws[0], rws[1], pitch_upr, roll_upr, azimuths[0], zeniths[0])
     ws_lwr = planar_windspeed(
         rws[2], rws[3], pitch_lwr, roll_lwr, azimuths[2], zeniths[2])
 
     shear_coeff = shear_coefficient(ws_upr, ws_lwr, hgt_upr, hgt_lwr)
-    return extrapolate_windspeed(hub_hgt, shear_coeff, ws_lwr, plane_hgt_lwr)
+    return extrapolate_windspeed(hub_hgt, shear_coeff, ws_lwr, hgt_lwr)
 
 
 # Predicates
@@ -82,22 +86,25 @@ def process(df, dist,
         roll_offset=radians(0.4),
         predicate=default_predicate):
 
-    if set(df.columns) != set(columns):
+    if set(df.columns) <= set(columns):
         raise ValueError('DataFrame columns must be {}'.format(columns))
 
-    df = df.copy()
+    df = df.copy() # Also copies the DataFrame
     df.pitch += pitch_offset
     df.roll += roll_offset
 
-    hws = pd.Series(index=pd.DatetimeIndex())
+    index = df.index
+    index.name = 'time'
+    hws = pd.Series(name='value', index=index)
 
     for i, k in zip(range(len(df)), range(4, len(df))):
-        win = df.iloc[i, k]
+        win = df.iloc[i:k]
         time = win.iloc[0].time
-        if not pred(win):
+        if not predicate(win):
             hws.loc[time] = np.nan
             continue
+        win = win.set_index('los_id').sort_index()
         hws0 = horiz_windspeed(win, dist, hub_hgt, lidar_hgt, azimuths, zeniths)
         hws.loc[time] = hws0
 
-    return hws
+    return hws.dropna()
