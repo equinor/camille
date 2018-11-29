@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 from datetime import datetime
 from math import radians
-from os import path
 from random import choice
 import camille
 import gzip

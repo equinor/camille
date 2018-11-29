@@ -1,5 +1,4 @@
 from math import cos, sin, log, sqrt, radians
-from datetime import timedelta
 
 import pandas as pd
 import numpy as np
