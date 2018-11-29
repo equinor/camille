@@ -61,7 +61,7 @@ def ordered_los_id_4(df): return df.los_id.tolist() == [0,1,2,3]
 def los_id_4(df): return set(df.los_id) == set([0,1,2,3])
 def all_ok(df): return (df.status == 1).all()
 def max_duration(df, max_seconds=5.0):
-    duration = df.time.max().to_pydatetime() - df.time.min().to_pydatetime()
+    duration = df.index.max().to_pydatetime() - df.index.min().to_pydatetime()
     return duration.total_seconds() < max_seconds
 
 
@@ -74,13 +74,18 @@ def default_predicate(df):
 columns = ('los_id', 'radial_windspeed', 'status', 'pitch', 'roll')
 
 def process(df, dist,
-        azimuths=list(map(radians, [18.0181, 161.9819, -18.0181, -161.9819])),
-        zeniths=list(map(radians, [15.79, 15.79, 15.79, 15.79])),
+        azimuths=None,
+        zeniths=None,
         hub_hgt=98.6,
         lidar_hgt=4.5,
         pitch_offset=radians(-2.0),
         roll_offset=radians(0.4),
         predicate=default_predicate):
+
+    if azimuths is None:
+        azimuths = list(map(radians, [18.0181, 161.9819, -18.0181, -161.9819]))
+    if zeniths is None:
+        zeniths = list(map(radians, [15.79, 15.79, 15.79, 15.79]))
 
     if set(df.columns) <= set(columns):
         raise ValueError('DataFrame columns must be {}'.format(columns))

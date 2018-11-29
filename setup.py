@@ -18,6 +18,6 @@ setup(
     install_requires=['numpy', 'pandas', 'scipy', 'rainflow'],
     test_suite='tests',
     setup_requires=['pytest-runner', 'setuptools >=28', 'setuptools_scm'],
-    tests_require=['pytest'],
+    tests_require=['pytest', 'pytest-repeat'],
     use_scm_version={'write_to': 'camille/version.py'},
 )
