@@ -18,6 +18,16 @@ def _sqlite(start_date, end_date, connection, installation):
                                 'Timestamp': {'utc': True}
                            }).sort_index()
 
+    df.rename(columns={
+        'Timestamp': 'time',
+        'LOS Index': 'los_id',
+        'Distance': 'distance',
+        'RWS': 'radial_windspeed',
+        'RWS Status': 'status',
+        'Tilt': 'pitch',
+        'Roll': 'roll',
+    }, inplace=True)
+
     return df
 
 
