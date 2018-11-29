@@ -12,9 +12,9 @@ def test_load_all_data():
 
     assert df.shape[0] == 27
     assert (
-                df.RWS == [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                            2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-                            3, 3, 3, 3, 3, 3 ]
+                df.radial_windspeed == [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                                         2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+                                         3, 3, 3, 3, 3, 3 ]
            ).all()
 
 
@@ -26,7 +26,7 @@ def test_load_one_day():
 
     assert df.shape[0] == 11
     assert (
-                df.RWS == [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ]
+                df.radial_windspeed == [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ]
            ).all()
 
     s = datetime(2017, 12, 18)
@@ -36,7 +36,7 @@ def test_load_one_day():
 
     assert df.shape[0] == 10
     assert (
-                df.RWS == [ 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 ]
+                df.radial_windspeed == [ 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 ]
            ).all()
 
 def test_left_closed():
@@ -47,7 +47,7 @@ def test_left_closed():
 
     assert df.shape[0] == 6
     assert (
-                df.RWS == [ 3, 3, 3, 3, 3, 3 ]
+                df.radial_windspeed == [ 3, 3, 3, 3, 3, 3 ]
            ).all()
 
 def test_right_open():
@@ -58,5 +58,5 @@ def test_right_open():
 
     assert df.shape[0] == 11
     assert (
-                df.RWS == [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ]
+                df.radial_windspeed == [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ]
            ).all()

@@ -1,6 +1,7 @@
 import sqlite3
 import os
 import pandas as pd
+from math import radians
 
 def _sqlite(start_date, end_date, connection, installation):
     query = (
@@ -27,6 +28,8 @@ def _sqlite(start_date, end_date, connection, installation):
         'Tilt': 'pitch',
         'Roll': 'roll',
     }, inplace=True)
+    df.pitch = df.pitch.apply(radians)
+    df.roll = df.roll.apply(radians)
 
     return df
 
