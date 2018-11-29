@@ -24,9 +24,9 @@ before_script:
 
 script:
   - python3 setup.py test
-  - coverage run setup.py test
-  - coverage xml
-  - python-codacy-coverage -r coverage.xml
+
+after_success:
+  - 'if [ ! -z "${CODACY_PROJECT_TOKEN}" ]; then coverage run setup.py test; coverage xml; python-codacy-coverage -r coverage.xml; fi'
 
 deploy:
   - provider: pypi
