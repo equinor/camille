@@ -23,7 +23,7 @@ before_script:
   - bandit -c bandit.yml -r camille
 
 script:
-  - python3 setup.py test
+  - python3 setup.py test --verbose
   - coverage run setup.py test
   - coverage xml
   - python-codacy-coverage -r coverage.xml
