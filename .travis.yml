@@ -17,12 +17,16 @@ matrix:
 install:
   - pip3 install -r requirements.txt
   - pip3 install bandit setuptools-scm
+  - pip3 install coverage codacy-coverage
 
 before_script:
   - bandit -c bandit.yml -r camille
 
 script:
   - python3 setup.py test
+  - coverage run setup.py test
+  - coverage xml
+  - python-codacy-coverage -r coverage.xml
 
 deploy:
   - provider: pypi
