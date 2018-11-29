@@ -5,7 +5,7 @@ import pandas as pd
 def _sqlite(start_date, end_date, connection, installation):
     query = (
         'SELECT * FROM ' + installation + #nosec
-        ' WHERE Timestamp > :start AND Timestamp < :end ;'
+        ' WHERE Timestamp >= :start AND Timestamp < :end ;'
     )
 
     df = pd.read_sql_query(query, connection,
