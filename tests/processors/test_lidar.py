@@ -28,23 +28,11 @@ def test_lidar(windiris_root):
     end_date = datetime(2030, 1, 1, 0, 15, tzinfo=pytz.utc)
 
     cin = camille.source.bazefetcher('tests/test_data/processed')
-    ref = cin('inst1-horiz-windspeed-50m', start_date, end_date)[1:-1]
+    ref = cin('inst1-horiz-windspeed-50m', start_date, end_date)
 
     wiris = camille.source.windiris(windiris_root)
-    df = wiris(start_date, end_date, 'inst1')
-    df.rename(columns={
-            'Timestamp': 'time',
-            'LOS Index': 'los_id',
-            'Distance': 'distance',
-            'RWS': 'radial_windspeed',
-            'RWS Status': 'status',
-            'Tilt': 'pitch',
-            'Roll': 'roll',
-        }, inplace=True)
-    df.pitch = df.pitch.apply(radians)
-    df.roll = df.roll.apply(radians)
+    df = wiris('inst1', 50, start_date, end_date)
 
-    g = df.groupby('distance')
     hws = camille.process.lidar(g.get_group(50), 50)
 
     pd.testing.assert_series_equal(hws, ref)

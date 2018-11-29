@@ -30,26 +30,22 @@ def extrapolate_windspeed(hgt, shear_coeff, ref_windspeed, ref_hgt):
     return ref_windspeed * pow(hgt / ref_hgt, shear_coeff)
 
 
-def temp_ws(sensors, ws_upr, ws_lwr, shear_coeff, hub_hgt, hgt_upr, hgt_lwr):
-    return ws_lwr * pow(hub_hgt / hgt_lwr, shear_coeff)
-
-
-def horiz_windspeed(df, dist, hub_hgt, lidar_hgt, azimuths, zeniths):
-    sensors = df.index.tolist()
-    pitch_upr = (df.iloc[0].pitch + df.iloc[1].pitch) / 2.0
-    pitch_lwr = (df.iloc[2].pitch + df.iloc[3].pitch) / 2.0
-    roll_upr = (df.iloc[0].roll + df.iloc[1].roll) / 2.0
-    roll_lwr = (df.iloc[2].roll + df.iloc[3].roll) / 2.0
+def horiz_windspeed(los, dist, hub_hgt, lidar_hgt, azimuths, zeniths):
+    sensors = los.index.tolist()
+    pitch_upr = (los.loc[0].pitch + los.loc[1].pitch) / 2.0
+    pitch_lwr = (los.loc[2].pitch + los.loc[3].pitch) / 2.0
+    roll_upr = (los.loc[0].roll + los.loc[1].roll) / 2.0
+    roll_lwr = (los.loc[2].roll + los.loc[3].roll) / 2.0
 
     beam_hgts = [
         sample_hgt(s, hub_hgt, lidar_hgt, dist,
-                   df.iloc[s].pitch, df.iloc[s].roll, azimuths[s], zeniths[s])
+                   los.loc[s].pitch, los.loc[s].roll, azimuths[s], zeniths[s])
         for s in sensors
     ]
     hgt_upr = (beam_hgts[0] + beam_hgts[1]) * 0.5
     hgt_lwr = (beam_hgts[2] + beam_hgts[3]) * 0.5
 
-    rws = [df.iloc[s].radial_windspeed for s in sensors]
+    rws = [los.loc[s].radial_windspeed for s in sensors]
     ws_upr = planar_windspeed(
         rws[0], rws[1], pitch_upr, roll_upr, azimuths[0], zeniths[0])
     ws_lwr = planar_windspeed(
@@ -75,7 +71,7 @@ def default_predicate(df):
 
 # Process
 
-columns = ('time', 'los_id', 'radial_windspeed', 'status', 'pitch', 'roll')
+columns = ('los_id', 'radial_windspeed', 'status', 'pitch', 'roll')
 
 def process(df, dist,
         azimuths=list(map(radians, [18.0181, 161.9819, -18.0181, -161.9819])),
@@ -94,12 +90,11 @@ def process(df, dist,
     df.roll += roll_offset
 
     index = df.index
-    index.name = 'time'
     hws = pd.Series(name='value', index=index)
 
     for i, k in zip(range(len(df)), range(4, len(df))):
         win = df.iloc[i:k]
-        time = win.iloc[0].time
+        time = win.index[0]
         if not predicate(win):
             hws.loc[time] = np.nan
             continue
