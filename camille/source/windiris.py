@@ -22,7 +22,7 @@ def _sqlite(start_date, end_date, connection, installation):
 
 
 def windiris(root):
-    def windiris_internal(start_date, end_date, installation):
+    def windiris_internal(installation, start_date, end_date):
         f = os.path.join(root, installation, installation + '_rtd.db' )
         conn = sqlite3.connect(f)
 
