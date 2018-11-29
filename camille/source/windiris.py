@@ -40,7 +40,6 @@ def _sqlite(start_date,
                            }).sort_index()
 
     df.rename(columns={
-        'Timestamp': 'time',
         'LOS Index': 'los_id',
         'Distance': 'distance',
         'RWS': 'radial_windspeed',
@@ -48,6 +47,7 @@ def _sqlite(start_date,
         'Tilt': 'pitch',
         'Roll': 'roll',
     }, inplace=True)
+    df.index.name = 'time'
     df.pitch = df.pitch.apply(radians)
     df.roll = df.roll.apply(radians)
 
