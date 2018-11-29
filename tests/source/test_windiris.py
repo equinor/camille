@@ -60,3 +60,39 @@ def test_right_open():
     assert (
                 df.radial_windspeed == [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ]
            ).all()
+
+def test_filter():
+    s = datetime(2017, 12, 17)
+    e = datetime(2018, 10, 23)
+
+    df = wi('inst2', s, e, los_id=0)
+
+    assert df.shape[0] == 3
+    assert (
+                df.radial_windspeed == [ 1, 2, 3 ]
+           ).all()
+
+    df = wi('inst2', s, e, los_id=[0, 1])
+
+    assert df.shape[0] == 6
+    assert (
+                df.radial_windspeed == [ 1, 1, 2, 2, 3, 3 ]
+           ).all()
+
+    df = wi('inst2', s, e, distance=1)
+
+    assert df.shape[0] == 3
+    assert (
+                df.radial_windspeed == [ 1, 2, 3 ]
+           ).all()
+
+    df = wi('inst2', s, e, distance=[1,2])
+
+    assert df.shape[0] == 6
+    assert (
+                df.radial_windspeed == [ 1, 1, 2, 2, 3, 3 ]
+           ).all()
+
+    df = wi('inst2', s, e, status=0)
+
+    assert df.empty
