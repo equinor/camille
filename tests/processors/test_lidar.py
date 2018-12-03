@@ -43,6 +43,6 @@ def test_lidar(windiris_root):
     wiris = camille.source.windiris(windiris_root)
     df = wiris('inst1', start_date, end_date, distance=dist)
 
-    hws = camille.process.lidar(df)
+    hws = camille.process.lidar(df, dist)
 
     pd.testing.assert_series_equal(hws, ref)

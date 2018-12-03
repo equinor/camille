@@ -74,6 +74,7 @@ columns = ('los_id', 'radial_windspeed', 'status', 'pitch', 'roll')
 
 def process(
         df,
+        dist,
         azimuths=None,
         zeniths=None,
         hub_hgt=98.6,
@@ -93,8 +94,6 @@ def process(
     df = df.copy() # Also copies the DataFrame
     df.pitch += pitch_offset
     df.roll += roll_offset
-
-    dist = df.distance.iloc[0]
 
     index = df.index
     hws = pd.Series(name='value', index=index)
