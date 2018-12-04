@@ -13,11 +13,11 @@ def create_report():
 
 
 def extract_survival_rate(mutmut_result):
-    lines = mutmut_result.decode().split("\n")
+    lines: list = mutmut_result.decode().split("\n")
     before_survivers = [i for i, s in enumerate(lines) if "Survived" in s]
     del lines[0:before_survivers[0]+1]
 
-    return len(lines)
+    return sum("mutmut apply" in l for l in lines)
 
 
 def create_json_report(branch, survival_rate):
