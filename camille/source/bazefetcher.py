@@ -38,6 +38,93 @@ def _safe_read(fn, **kwargs):
         return pd.DataFrame()
 
 
+def _tidy_frame(df, tzinfo):
+    if df is None or df.empty:
+        df.insert(0, 't', [])
+        df.insert(1, 'v', [])
+    df.rename(columns={
+        't': 'time',
+        'v': 'value',
+        }, inplace=True)
+
+    df.time = pd.to_datetime(df.time, unit='ms')
+    df.set_index('time', inplace=True)
+    df.index = df.index.tz_localize(tzinfo)
+    df.sort_index(inplace=True)
+
+
+def _extend_bwd(start_date, df, tag_root, fn_regex, tzinfo):
+    """
+    Extends the range to include the last sample before or at the same time
+    as the start of time range
+    """
+
+    if df.index.min() <= start_date:
+        start_date = df[:start_date].index.max()
+        return df, start_date
+
+    files = [
+        os.path.join(tag_root, fn) for fn in os.listdir(tag_root)
+        if fn_regex.match(fn) and _fn_end_date(fn) < start_date
+    ]
+    while True:
+        if not files: break
+
+        prev_fn = max(files, key=lambda x: _fn_end_date( os.path.basename(x) ))
+        tmp_df = _safe_read(prev_fn)
+
+        if tmp_df.empty:
+            files.remove(prev_fn)
+            continue
+
+        _tidy_frame(tmp_df, tzinfo)
+
+        start_date = tmp_df.index.max()
+
+        df.loc[start_date] = tmp_df.loc[start_date]
+        df.sort_index(inplace=True)
+        break
+
+    return df, start_date
+
+
+def _extend_fwd(end_date, df, tag_root, fn_regex, tzinfo):
+    """
+    Extends the range to include the next sample after or at the same time
+    as the end of time range
+    """
+
+    if df.index.max() >= end_date:
+        end_date = df[end_date:].index.min()
+        return df, end_date + datetime.timedelta(microseconds=1)
+
+    files = [
+        os.path.join(tag_root, fn) for fn in os.listdir(tag_root)
+        if fn_regex.match(fn) and _fn_start_date(fn) > end_date
+    ]
+    while True:
+        if not files: break
+
+        next_fn = min(files,
+                      key=lambda x: _fn_start_date( os.path.basename(x) ))
+        tmp_df = _safe_read(next_fn)
+
+        if tmp_df.empty:
+            files.remove(next_fn)
+            continue
+
+        _tidy_frame(tmp_df, tzinfo)
+
+        end_date = tmp_df.index.min()
+
+        df.loc[end_date] = tmp_df.loc[end_date]
+        df.sort_index(inplace=True)
+        end_date += datetime.timedelta(microseconds=1)
+        break
+
+    return df, end_date
+
+
 def bazefetcher(root, tzinfo=pytz.utc):
     if not os.path.isdir(root):
         raise ValueError('{} is not a directory'.format(root))
@@ -45,7 +132,10 @@ def bazefetcher(root, tzinfo=pytz.utc):
     if not isinstance(tzinfo, datetime.tzinfo):
         raise ValueError('tzinfo must be instance of datetime.tzinfo')
 
-    def bazefetcher_internal(tag, start_date, end_date):
+    def bazefetcher_internal(tag,
+                             start_date,
+                             end_date,
+                             snap=None):
         if start_date.tzinfo is None or end_date.tzinfo is None:
             raise ValueError('dates must be timezone aware')
 
@@ -68,20 +158,23 @@ def bazefetcher(root, tzinfo=pytz.utc):
         files.sort()
 
         L = [_safe_read(fn) for fn in files]
-        df = pd.concat(L, sort=True) if len(L) > 0 else None
+        df = pd.concat(L, sort=True) if len(L) > 0 else pd.DataFrame()
 
-        if not files or df is None or df.empty:
-            df = pd.DataFrame(columns=('t', 'v'))
+        _tidy_frame(df, tzinfo)
 
-        df.rename(columns={
-            't': 'time',
-            'v': 'value',
-            }, inplace=True)
+        if snap == 'left' or snap == 'both':
+            df, start_date = _extend_bwd(start_date,
+                                         df,
+                                         tag_root,
+                                         fn_regex,
+                                         tzinfo)
 
-        df.time = pd.to_datetime(df.time, unit='ms')
-        df.set_index('time', inplace=True)
-        df.index = df.index.tz_localize(tzinfo)
-        df.sort_index(inplace=True)
+        if snap == 'right' or snap == 'both':
+            df, end_date = _extend_fwd(end_date,
+                                       df,
+                                       tag_root,
+                                       fn_regex,
+                                       tzinfo)
 
         try:
             eps = datetime.timedelta(microseconds=1)

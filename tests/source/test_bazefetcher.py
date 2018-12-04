@@ -112,3 +112,55 @@ def test_no_time_zone():
     with pytest.raises(ValueError) as excinfo1: baze('Perlin', t1_1, t1_3_notz)
     assert 'dates must be timezone aware' in str(excinfo0.value)
     assert 'dates must be timezone aware' in str(excinfo1.value)
+
+def test_snap_backward_within_file():
+    inst4 = authored('installation-04-status',
+                     t1_1_1,
+                     t1_2,
+                     snap='left')
+
+    assert ( inst4.index == [ datetime(2030, 1, 1, tzinfo=utc) ] ).all()
+    assert ( inst4 == [ 1 ] ).all()
+
+def test_snap_backward_outside_file():
+    inst4 = authored('installation-04-status',
+                     t1_5,
+                     t1_5_1,
+                     snap='left')
+
+    assert ( inst4.index == [ datetime(2030, 1, 3, tzinfo=utc) ] ).all()
+    assert ( inst4 == [ 1 ] ).all()
+
+def test_snap_forward_within_file():
+    t1_2_0_1 = t1_2 + timedelta(seconds=2)
+    inst4 = authored('installation-04-status',
+                     t1_2,
+                     t1_2_0_1,
+                     snap='right')
+
+    assert ( inst4.index ==
+              [ datetime(2030, 1, 2, 0, 0, tzinfo=utc),
+                datetime(2030, 1, 2, 22, 0, tzinfo=utc) ]
+           ).all()
+    assert ( inst4 == [ 0, 1 ] ).all()
+
+def test_snap_forward_outside_file():
+    inst4 = authored('installation-04-status',
+                     t12_31_22,
+                     t12_31_23,
+                     snap='right')
+
+    assert ( inst4.index == [ datetime(2030, 1, 1, tzinfo=utc) ] ).all()
+    assert ( inst4 == [ 1 ] ).all()
+
+def test_snap_both():
+    inst4 = authored('installation-04-status',
+                     t1_2 + timedelta(seconds=1),
+                     t1_2 + timedelta(seconds=2),
+                     snap='both')
+
+    assert ( inst4.index ==
+              [ datetime(2030, 1, 2, 0, 0, tzinfo=utc),
+                datetime(2030, 1, 2, 22, 0, tzinfo=utc) ]
+           ).all()
+    assert ( inst4 == [ 0, 1 ] ).all()
