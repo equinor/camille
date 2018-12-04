@@ -16,7 +16,6 @@ def _sqlite(start_date,
             los_id=None,
             distance=None,
             status=None):
-    connection.set_trace_callback(print)
     query = (
         'SELECT * FROM ' + installation #nosec
         + ' WHERE Timestamp >= :start AND Timestamp < :end'
