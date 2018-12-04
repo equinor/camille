@@ -17,13 +17,15 @@ matrix:
 install:
   - pip3 install -r requirements.txt
   - pip3 install bandit setuptools-scm
-  - pip3 install coverage codacy-coverage
+  - pip3 install coverage codacy-coverage mutmut
 
 before_script:
   - bandit -c bandit.yml -r camille
 
 script:
   - python3 setup.py test --verbose
+  - mutmut run
+  - python3 buildtools/mutmut_report.py
 
 after_success:
   - 'if [ ! -z "${CODACY_PROJECT_TOKEN}" ]; then coverage run setup.py test; coverage xml; python-codacy-coverage -r coverage.xml; fi'
@@ -38,3 +40,10 @@ deploy:
     user: statoil-travis
     password:
       secure: jJbW5U0BuXbuTnlsZD7nKRKDGFPkUSVGSnJy0FwZu3CQ2yEk9OUKtPoRS1kaEgVdxoYtCgZemRk1WfkkJqSklitFvrfpKU4WBbdQxUrmHjzaRYxe3dipaP4+CFM7nMG7YNwwScQfn1bocH2AaC/wIcBIoYkZWbJARc5V1NsbvxdEk5dPHaPRLaL4zxjHShfLTBKsUculn9jCwrjj9k35/JycF6hWXzWD+HC4q8oz743Q0oyjkcZu1zYHLns9Ug0lTCDjO4ugFXTcwlyKRXDepSwGy6Y6bwiU9d1/Jj/5TNU1tNkKWHHxjn15O2BWMt/aw97575g08FS+/ewprfRCfYGsXJskr5I5/emRKZ1GODBFkeM/UGzfoOo/9C57J3ULrJcgKsMBIsUabLyXswSpcVEaKTexTqnkEebkJfcwMxL4pz7uU8jHxYvg4gUvrXUrKMzWqwUavwxY4K22dsMtx0U6UlrExpbHvPdn/czDcLL6jyKMkJsfjFHNlNXDBCdI26zT8ldrJqATZpdS9lalnkMo3bw8oDMsuhzyPSbMH1oQ1lMDILllS37CEqN7O05lxYfGYRrbxLfUaxZkA0S/RXZP3KwusnkBHqGVbT/8MZN1woKjze25hKpk1tE9V9ZQIvgPtfC5s7L/T9FqEqlWrZPF2q4e+UydG/lyYThhjHo=
+  - provider: s3
+    access_key_id: AKIAJM6EMIR7UUQR2LBA
+    secret_access_key:
+      secure: wjH1Wc+prM9IY8OkjzF556rp78iKulQIPTNfkVOzkWPg+QQCOPZhlaDBXLJ5B5bw8dHgBKDtMstrRn/xpZ9o3HGeAYZ7piyWhe0gNfXipdqFqcdwxYYsmvp/hI4uEDiU7XOaTDY5rihVgO4NObtwi7yCVAqWuMetpBq9FbcHAEzyjW7tFccnjE1PeymRXfGZwh6YcVmNRdjzkWcQO9E+ogqhhThYiTKSNtb9O/qbIDUwiFnskYuBa/FDCxKOA/TSpHE19d6r9XXFw2/fMe0Z8GPVFQA6LhhEkfC+VC0yX5kV+D0MvQ59yG7uKyif5sx+ymZBgeRmBoFOWG+xXrTpDwTukbixBxR4FTI3xRqPQaMWQ9GHSZ0flItmkB3wRkn707ylIqh0BW7AcCsinyYBhpNVYxjDbv4Aa+0n5MlDbiPxNBxqAaYce7WIFr9aLvxvRJTrsUwBU2IN4i/P/FjFtrB6Qo04BisA03ecoai+RuB0MKzEIJU3NkjBaMYrwPlC92tut3FKKsdlB/VYlFhIGDprcfPYoWjI3O+Uftx1LbArmP3HjZQSwaTT2yZV+3S9h6R3L1C+fSkBivTM8bGe/0MypH1hnkM+UfKKhv0cOWzTVSttcbCTO4q3oxZzlfTBt3J/bZ50hbNMYch/lcj5W2wfMK9yX/HVCdPDn4wOqM=
+    bucket: equinor-sib
+    local-dir: mutmut
+    acl: public_read
