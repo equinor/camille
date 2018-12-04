@@ -38,7 +38,7 @@ def test_lidar(windiris_root):
         .format(dist, start_date, end_date))
 
     cin = camille.source.bazefetcher('tests/test_data/processed')
-    ref = cin('inst1-horiz-windspeed-{}m'.format(dist), start_date, end_date)[:-1]
+    ref = cin('inst1-horiz-windspeed-{}m'.format(dist), start_date, end_date)
 
     wiris = camille.source.windiris(windiris_root)
     df = wiris('inst1', start_date, end_date, distance=dist)

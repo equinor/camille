@@ -314,7 +314,7 @@ def process(
     index = df.index
     hws = pd.Series(name='value', index=index)
 
-    for i, k in zip(range(len(df)), range(4, len(df))):
+    for i, k in zip(range(len(df)), range(4, len(df)+1)):
         """
         We compute the horizontal windspeed using four LOS measurements. We
         therefor consider windows of size four.
