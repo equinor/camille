@@ -65,25 +65,56 @@ def _generate_tag_location(
 
 
 def bazefetcher(root):
+    """Bazefetcher
+
+    Creates a function that can be used to write time series' to the specified
+    root directory
+
+    Parameters
+    ----------
+    root : str or path-like
+        Path to the bazefetcher root directory
+
+    Returns
+    -------
+    function (pandas.TimeSeries, str, datetime.datetime, datetime.datetime)
+        Function for writing time series' to the bazefetcher root directory
+
+
+    The returned function can be called to write time series' to the root. It
+    takes the following parameters:
+
+    Parameters
+    ----------
+    series : pandas.TimeSeries
+        Time series to write. The time series index must be timezone aware
+    tag : str
+        The tag the series will be written to
+    start : datetime.datetime
+        The start time of the data to be written. Must be timezone aware
+    end : datetime.datetime
+        The end time of the data to be written. Must be timezone aware
+
+    Examples
+    --------
+
+    Write time series `series` to tag `tag`:
+
+    >>> start_date = datetime.datetime(2029, 1, 1, tzinfo=pytz.utc)
+    >>> end_date = datetime.datetime(2030, 1, 1, tzinfo=pytz.utc)
+    >>> cout = camille.output.bazefetcher('<root-directory>')
+    >>> cout(series, tag, start_date, end_date)
+
+    """
     if not os.path.isdir(root):
         raise ValueError('{} is not a directory'.format(root))
 
     def bazefetcher_internal(
             series, tag=None, start=None, end=None):
         """
-        Stores the provided series of data under root folder specified
-        during call of outer method.
-        :param series: Indexed series of datetime information.
-        Intended object: pandas.Series
-        :param tag: Tag of the document, Must be specified
-        :param start: Start datetime of the stored period (inclusive).
-        If param is not provided, start element of series parameter is
-        taken. Date should be timezone aware
-        :param end: End datetime of the stored period (exclusive).
-        If param is not provided, end element of series parameter is
-        taken. Date should be timezone aware. Can't be earlier than
-        start date param.
-        :return: None
+        See Also
+        --------
+        bazefetcher
         """
         if tag is None:
             raise ValueError('tag must be specified')

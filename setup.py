@@ -19,5 +19,5 @@ setup(
     test_suite='tests',
     setup_requires=['pytest-runner', 'setuptools >=28', 'setuptools_scm'],
     tests_require=['pytest', 'pytest-repeat'],
-    use_scm_version={'write_to': 'camille/version.py'},
+    use_scm_version=True,
 )
