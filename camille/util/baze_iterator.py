@@ -45,6 +45,11 @@ def baze_iterator(baze, tag, start, stop, interval=timedelta(1), padding=timedel
     end : list of datetime.datetime
         The end time for all iterations. Does not include padding
 
+    Raises
+    ------
+    ValueError
+        If start dates are not at midnight or timedelta is not in days.
+
     See Also
     --------
 
@@ -92,4 +97,3 @@ def _check_timedelta(td):
     errormsg = "Interval must be in day(s)"
     if td.microseconds != 0 or td.seconds != 0:
         raise ValueError(errormsg)
-
