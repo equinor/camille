@@ -1,4 +1,5 @@
 import os
+from os.path import join, isdir, basename
 import re
 import datetime
 import pytz
@@ -53,7 +54,34 @@ def _tidy_frame(df, tzinfo):
     df.sort_index(inplace=True)
 
 
-def _extend_bwd(start_date, df, tag_root, fn_regex, tzinfo):
+def _get_files(src_dirs, tag, fn_regex, date_pred):
+    """
+    Gets all possible files with tag under src_dirs which satisfy
+    fn_regex and date_func
+    """
+    tag_roots = list(filter(isdir, (join(dr, tag) for dr in src_dirs)))
+
+    if not tag_roots:
+        raise ValueError('Tag {} not found in {}'.format(tag, src_dirs))
+
+    files = [join(r, fn) for r in tag_roots for fn in os.listdir(r)
+             if fn_regex.match(fn) and date_pred(fn)]
+
+    if len(src_dirs) > 1:
+        fnames = list(map(basename, files))
+        if len(fnames) != len(set(fnames)):
+            seen = set()
+            dupl = []
+            for fn in fnames:
+                if fn in seen:
+                    dupl.append(fn)
+                seen.add(fn)
+            raise ValueError("files {} are not unique".format(dupl))
+
+    return files
+
+
+def _extend_bwd(start_date, df, src_dirs, tag, fn_regex, tzinfo):
     """
     Extends the range to include the last sample before or at the same time
     as the start of time range
@@ -63,10 +91,9 @@ def _extend_bwd(start_date, df, tag_root, fn_regex, tzinfo):
         start_date = df[:start_date].index.max()
         return df, start_date
 
-    files = [
-        os.path.join(tag_root, fn) for fn in os.listdir(tag_root)
-        if fn_regex.match(fn) and _fn_end_date(fn) < start_date
-    ]
+    files = _get_files(src_dirs, tag, fn_regex,
+                       lambda fn: _fn_end_date(fn) < start_date)
+
     while True:
         if not files: break
 
@@ -88,7 +115,7 @@ def _extend_bwd(start_date, df, tag_root, fn_regex, tzinfo):
     return df, start_date
 
 
-def _extend_fwd(end_date, df, tag_root, fn_regex, tzinfo):
+def _extend_fwd(end_date, df, src_dirs, tag, fn_regex, tzinfo):
     """
     Extends the range to include the next sample after or at the same time
     as the end of time range
@@ -98,10 +125,9 @@ def _extend_fwd(end_date, df, tag_root, fn_regex, tzinfo):
         end_date = df[end_date:].index.min()
         return df, end_date + datetime.timedelta(microseconds=1)
 
-    files = [
-        os.path.join(tag_root, fn) for fn in os.listdir(tag_root)
-        if fn_regex.match(fn) and _fn_start_date(fn) > end_date
-    ]
+    files = _get_files(src_dirs, tag, fn_regex,
+                       lambda fn: _fn_start_date(fn) > end_date)
+
     while True:
         if not files: break
 
@@ -125,9 +151,13 @@ def _extend_fwd(end_date, df, tag_root, fn_regex, tzinfo):
     return df, end_date
 
 
-def bazefetcher(root, tzinfo=pytz.utc):
-    if not os.path.isdir(root):
-        raise ValueError('{} is not a directory'.format(root))
+def bazefetcher(src_dir, tzinfo=pytz.utc):
+    if isinstance(src_dir, str):
+        src_dir = [src_dir]
+
+    src_dirs = [dr for dr in src_dir if isdir(dr)]
+    if not src_dirs:
+        raise ValueError('no file in {} is a directory'.format(src_dir))
 
     if not isinstance(tzinfo, datetime.tzinfo):
         raise ValueError('tzinfo must be instance of datetime.tzinfo')
@@ -142,20 +172,11 @@ def bazefetcher(root, tzinfo=pytz.utc):
         if not start_date <= end_date:
             raise ValueError('start_date must be earlier than end_date')
 
-        tag_root = os.path.join(root, tag)
-
-        if not os.path.isdir(tag_root):
-            raise ValueError('Tag {} not found'.format(tag))
-
         fn_regex = re.compile(tag + fn_tail_pattern)
 
-        files = [
-            os.path.join(tag_root, fn) for fn in os.listdir(tag_root)
-            if fn_regex.match(fn)
-                and _fn_start_date(fn) <= end_date
-                and start_date <= _fn_end_date(fn)
-        ]
-        files.sort()
+        files = _get_files(src_dirs, tag, fn_regex,
+                           lambda fn : _fn_start_date(fn) <= end_date
+                                       and start_date <= _fn_end_date(fn))
 
         L = [_safe_read(fn) for fn in files]
         df = pd.concat(L, sort=True) if len(L) > 0 else pd.DataFrame()
@@ -165,14 +186,16 @@ def bazefetcher(root, tzinfo=pytz.utc):
         if snap == 'left' or snap == 'both':
             df, start_date = _extend_bwd(start_date,
                                          df,
-                                         tag_root,
+                                         src_dirs,
+                                         tag,
                                          fn_regex,
                                          tzinfo)
 
         if snap == 'right' or snap == 'both':
             df, end_date = _extend_fwd(end_date,
                                        df,
-                                       tag_root,
+                                       src_dirs,
+                                       tag,
                                        fn_regex,
                                        tzinfo)
 
