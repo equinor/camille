@@ -101,6 +101,12 @@ def test_read_outside_timeseries_in_file():
     assert empty_time_series.name == 'value'
     assert empty_time_series.index.name == 'time'
 
+def test_no_directories():
+    with pytest.raises(ValueError) as excinfo:
+        bazefetcher('tests/test_data/baze/perling')
+    assert ('no file in [\'tests/test_data/baze/perling\'] is a directory'
+            in str(excinfo.value))
+
 def test_non_existing_tag():
     with pytest.raises(ValueError) as excinfo:
         baze('non-existing-tag', t1_1, t1_1_1)
@@ -164,3 +170,39 @@ def test_snap_both():
                 datetime(2030, 1, 2, 22, 0, tzinfo=utc) ]
            ).all()
     assert ( inst4 == [ 0, 1 ] ).all()
+
+
+def test_many_roots():
+    baze_and_authored = bazefetcher(
+        ['tests/test_data/authored', 'tests/test_data/baze'])
+
+    sin_b = baze_and_authored('Sin-T60s-SR01hz', t1_2, t1_4)
+    assert len(sin_b) == 17280
+
+    i04_status_b = authored('installation-04-status', t12_31_23, t1_5_1)
+    assert len(i04_status_b) == 5
+
+
+def test_many_roots_same_tag():
+    roots = ['tests/test_data/many_roots/dir'+ str(index)
+             for index in [3, 1, 2]]
+    many_roots = bazefetcher(roots)
+    tag = "root_tag"
+    root = many_roots(tag, t1_1, t1_5)
+    assert len(root) == 7
+
+    root = many_roots(tag, t1_3, t1_3_21)
+    assert len(root) == 1
+
+    root = many_roots(tag, t1_3, t1_3_21, snap='right')
+    assert len(root) == 2
+
+
+def test_many_roots_same_filename():
+    roots = ['tests/test_data/many_roots/dir'+ str(index)
+             for index in [1, 4]]
+    many_roots = bazefetcher(roots)
+    with pytest.raises(ValueError) as excinfo:
+        many_roots("root_tag", t1_1, t1_5)
+    assert ('files [\'root_tag_2030-01-03T00.00.00+00.00_2030-01-04T00.00.00'
+            '+00.00.json.gz\'] are not unique' in str(excinfo.value))
