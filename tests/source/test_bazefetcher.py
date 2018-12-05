@@ -25,12 +25,12 @@ t1_4_23 = datetime(2030, 1, 4, 23, tzinfo=utc)
 t1_5 = datetime(2030, 1, 5, tzinfo=utc)
 t1_5_1 = datetime(2030, 1, 5, 1, tzinfo=utc)
 
-trng = pd.date_range(t1_1, t1_5, freq="S", name='time', closed='left')
+trng = pd.date_range(t1_1, t1_5, freq="10S", name='time', closed='left')
 t = trng.map(lambda t: (t - t1_1).total_seconds())
 
-_sin = pd.Series(np.sin(t * pi / 60), index=trng, name='value')
-_cos = pd.Series(np.cos(t * pi / 60), index=trng, name='value')
-_tan = pd.Series(np.tan(t * pi / 60), index=trng, name='value')
+_sin = pd.Series(np.sin(t * pi / 6), index=trng, name='value')
+_cos = pd.Series(np.cos(t * pi / 6), index=trng, name='value')
+_tan = pd.Series(np.tan(t * pi / 6), index=trng, name='value')
 def sin(t0=t1_1, tn=t1_5):
     eps = timedelta(microseconds=1)
     return _sin[t0:tn - eps]
@@ -45,36 +45,36 @@ def assert_correct(v, func, t0, t1):
     pd.testing.assert_series_equal(v, func(t0, t1))
     assert v.index[0] == t0
     assert v.index[-1] < t1
-    assert (t1 - v.index[-1]).to_pytimedelta() < timedelta(seconds=2)
+    assert (t1 - v.index[-1]).to_pytimedelta() < timedelta(seconds=20)
 
 def test_read_two_days():
-    sin_b = baze('Sin-T60s-SR1hz', t1_2, t1_4)
-    tan_b = baze('Tan-T60s-SR1hz', t1_2, t1_4)
-    assert len(sin_b) == len(tan_b) == 172800 # 2 days
+    sin_b = baze('Sin-T60s-SR01hz', t1_2, t1_4)
+    tan_b = baze('Tan-T60s-SR01hz', t1_2, t1_4)
+    assert len(sin_b) == len(tan_b) == 17280 # 2 days
     pd.testing.assert_series_equal(sin_b, sin(t1_2, t1_4))
     pd.testing.assert_series_equal(tan_b, tan(t1_2, t1_4))
     assert sin_b.index[0] == t1_2
     assert sin_b.index[-1] < t1_4
-    assert (t1_4 - sin_b.index[-1]).to_pytimedelta() < timedelta(seconds=2)
+    assert (t1_4 - sin_b.index[-1]).to_pytimedelta() < timedelta(seconds=20)
 
 def test_read_partially_before():
-    cos_b = baze('Cos-T60s-SR1hz', t12_31_23, t1_1_1)
-    assert len(cos_b) == 3600 # 1 hour
+    cos_b = baze('Cos-T60s-SR01hz', t12_31_23, t1_1_1)
+    assert len(cos_b) == 360 # 1 hour
     assert_correct(cos_b, cos, t1_1, t1_1_1)
 
 def test_read_partially_after():
-    cos_b = baze('Cos-T60s-SR1hz', t1_4_23, t1_5_1)
-    assert len(cos_b) == 3600 # 1 hour
+    cos_b = baze('Cos-T60s-SR01hz', t1_4_23, t1_5_1)
+    assert len(cos_b) == 360 # 1 hour
     assert_correct(cos_b, cos, t1_4_23, t1_5)
 
 def test_read_immersed():
-    sin_b = baze('Sin-T60s-SR1hz', t1_3_15, t1_3_21)
-    assert len(sin_b) == 21600 # 6 hours
+    sin_b = baze('Sin-T60s-SR01hz', t1_3_15, t1_3_21)
+    assert len(sin_b) == 2160 # 6 hours
     assert_correct(sin_b, sin, t1_3_15, t1_3_21)
 
 def test_read_intersecting():
-    tan_b = baze('Tan-T60s-SR1hz', t1_3_21, t1_4_3)
-    assert len(tan_b) == 21600 # 6 hours
+    tan_b = baze('Tan-T60s-SR01hz', t1_3_21, t1_4_3)
+    assert len(tan_b) == 2160 # 6 hours
     assert_correct(tan_b, tan, t1_3_21, t1_4_3)
 
 def test_read_covering_authored():
@@ -96,7 +96,7 @@ def test_read_empty_tag():
     assert empty_tag.index.name == 'time'
 
 def test_read_outside_timeseries_in_file():
-    empty_time_series = baze('Cos-T60s-SR1hz', t12_31_22, t12_31_23)
+    empty_time_series = baze('Cos-T60s-SR01hz', t12_31_22, t12_31_23)
     assert empty_time_series.empty
     assert empty_time_series.name == 'value'
     assert empty_time_series.index.name == 'time'

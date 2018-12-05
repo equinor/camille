@@ -16,7 +16,6 @@ def _sqlite(start_date,
             los_id=None,
             distance=None,
             status=None):
-    connection.set_trace_callback(print)
     query = (
         'SELECT * FROM ' + installation #nosec
         + ' WHERE Timestamp >= :start AND Timestamp < :end'
@@ -61,7 +60,14 @@ def windiris(root):
                           los_id=None,
                           distance=None,
                           status=None):
+        if not os.path.isdir(root):
+            raise ValueError('{} is not a directory'.format(root))
+
         f = os.path.join(root, installation, installation + '_rtd.db' )
+
+        if not os.path.isfile(f):
+            raise ValueError('Tag {} not found'.format(tag))
+
         conn = sqlite3.connect(f)
 
         return _sqlite(start_date,
