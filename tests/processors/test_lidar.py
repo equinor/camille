@@ -12,7 +12,7 @@ import shutil
 
 min_date = datetime(2030, 1, 1, tzinfo=pytz.utc)
 max_date = datetime(2030, 1, 4, tzinfo=pytz.utc)
-date_range = pd.date_range(min_date, max_date, freq='30T', closed='left')
+date_range = pd.date_range(min_date, max_date, freq='15T', closed='left')
 distances = [50, 80, 120, 160, 200, 240, 280, 320, 360, 400]
 
 
