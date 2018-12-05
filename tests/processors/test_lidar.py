@@ -43,6 +43,64 @@ def test_lidar(windiris_root):
     wiris = camille.source.windiris(windiris_root)
     df = wiris('inst1', start_date, end_date, distance=dist)
 
-    hws = camille.process.lidar(df, dist)
+    hws = camille.process.lidar(df, dist).hws
 
-    pd.testing.assert_series_equal(hws, ref)
+    pd.testing.assert_series_equal(hws, ref, check_names=False)
+
+
+def test_lidar_extra_columns_share_coeff(windiris_root):
+    dist = 120
+    start = datetime(2030, 1, 1, tzinfo=pytz.utc)
+    end = datetime(2030, 1, 1, 0, 5, tzinfo=pytz.utc)
+    extra_columns = ['shear_coeff']
+
+    cin = camille.source.bazefetcher('tests/test_data/processed')
+    ref = pd.DataFrame({
+        'hws': cin('inst1-horiz-windspeed-{}m'.format(dist), start, end),
+        'shear_coeff': cin('inst1-shear-coeff-{}m'.format(dist), start, end),
+    }, columns=['hws'] + extra_columns)
+
+    wiris = camille.source.windiris(windiris_root)
+    li = wiris('inst1', start, end, distance=dist)
+
+    p = camille.process.lidar(li, dist, extra_columns=extra_columns)
+
+    pd.testing.assert_frame_equal(p, ref)
+
+
+
+def test_lidar_all_extra_columns(windiris_root):
+    dist = 50
+    start = datetime(2030, 1, 1, tzinfo=pytz.utc)
+    end = datetime(2030, 1, 1, 0, 5, tzinfo=pytz.utc)
+    extra_columns = [
+        'shear_coeff',
+        'rws0', 'rws1', 'rws2', 'rws3',
+        'beam_hgt0', 'beam_hgt1', 'beam_hgt2', 'beam_hgt3',
+        'planar_ws_upr', 'planar_ws_lwr',
+        'time0', 'time1', 'time2', 'time3',
+    ]
+
+    cin = camille.source.bazefetcher('tests/test_data/processed')
+    ref = pd.DataFrame({
+        'hws': cin('inst1-horiz-windspeed-{}m'.format(dist), start, end),
+        **{
+            c: cin('inst1-{}-{}m'.format(c.replace('_', '-'), dist), start, end)
+            for c in extra_columns
+        },
+    }, columns=['hws'] + extra_columns)
+    ref.time0 = pd.to_datetime(ref.time0, unit='ms', utc=True)
+    ref.time1 = pd.to_datetime(ref.time1, unit='ms', utc=True)
+    ref.time2 = pd.to_datetime(ref.time2, unit='ms', utc=True)
+    ref.time3 = pd.to_datetime(ref.time3, unit='ms', utc=True)
+
+    wiris = camille.source.windiris(windiris_root)
+    li = wiris('inst1', start, end, distance=dist)
+
+    p = camille.process.lidar(li, dist, extra_columns=extra_columns)
+    p.time3 = pd.to_datetime(p.time3)
+    p.time0 = pd.to_datetime(p.time0)
+    p.time1 = pd.to_datetime(p.time1)
+    p.time2 = pd.to_datetime(p.time2)
+
+    pd.testing.assert_frame_equal(p, ref)

@@ -120,7 +120,8 @@ def horiz_windspeed(L, dist, hub_hgt, lidar_hgt, azimuths, zeniths):
     Parameters
     ----------
     L : pandas.DataFrame
-        DataFrame containing the measurements for this window
+        DataFrame containing the measurements for this window, samples are
+        assumed to be ordered by los id
     dist : float
         Measurement distance
     hub_hgt : float
@@ -136,6 +137,7 @@ def horiz_windspeed(L, dist, hub_hgt, lidar_hgt, azimuths, zeniths):
     -------
     float
         Wind speed at nacelle hub height
+
     """
     sensors = L.index.tolist()
     pitch_upr = (L.loc[0].pitch + L.loc[1].pitch) / 2.0
@@ -158,7 +160,15 @@ def horiz_windspeed(L, dist, hub_hgt, lidar_hgt, azimuths, zeniths):
         rws[2], rws[3], pitch_lwr, roll_lwr, azimuths[2], zeniths[2])
 
     shear_coeff = shear_coefficient(ws_upr, ws_lwr, hgt_upr, hgt_lwr)
-    return extrapolate_windspeed(hub_hgt, shear_coeff, ws_lwr, hgt_lwr)
+    hws = extrapolate_windspeed(hub_hgt, shear_coeff, ws_lwr, hgt_lwr)
+    return hws, {
+        'shear_coeff': shear_coeff,
+        **{'rws{}'.format(s): rws[s] for s in sensors},
+        **{'beam_hgt{}'.format(s): beam_hgts[s] for s in sensors},
+        'planar_ws_upr': ws_upr,
+        'planar_ws_lwr': ws_lwr,
+        **{'time{}'.format(s): L.loc[s].time for s in sensors},
+    }
 
 
 # Predicates
@@ -268,7 +278,8 @@ def process(
         lidar_hgt=4.5,
         pitch_offset=radians(-2.0),
         roll_offset=radians(0.4),
-        predicate=default_predicate):
+        predicate=default_predicate,
+        extra_columns=None):
     """Process LiDAR
 
     Reconstruct horizontal wind speeds from Wind Iris real-time data
@@ -292,11 +303,20 @@ def process(
     roll_offset : float, optional
     predicate : function (pandas.DataFrame) -> bool, optional
         Condition for deciding if a sample window is valid
+    extra_columns : list of str, optional
+        Export extra data. Sometimes it can be useful to export intermediate
+        values computed by this processor. Available extra columns are:
+
+        - :code:`shear_coeff` - Shear coefficient
+        - :code:`rws[0-3]` - radial wind speeds
+        - :code:`beam_hgt[0-3]` - beam heights
+        - :code:`planar_ws_(upr|lwr)` - planar wind speeds
+        - :code:`time[0-3]` - los sample times
 
     Returns
     -------
-    pandas.TimeSeries
-        Computed horizontal wind speeds
+    pandas.DataFrame
+        hws column contains the computed horizontal wind speeds
     """
 
     if azimuths is None:
@@ -307,14 +327,24 @@ def process(
     if set(df.columns) <= set(columns):
         raise ValueError('DataFrame columns must be {}'.format(columns))
 
+    if (df.distance != dist).any():
+        raise ValueError('All distances must be equal dist ({})'.format(dist))
+
+    if df.index.name != 'time':
+        raise ValueError('Index column must be named time')
+
+    out_columns = ['hws']
+    if extra_columns is not None:
+        out_columns += list(extra_columns)
+
     df = df.copy() # Also copies the DataFrame
     df.pitch += pitch_offset
     df.roll += roll_offset
 
     index = df.index
-    hws = pd.Series(name='value', index=index)
+    hws = pd.DataFrame(columns=out_columns, index=index, dtype=float)
 
-    for i, k in zip(range(len(df)), range(4, len(df)+1)):
+    for i, k in zip(range(len(df)), range(4, len(df) + 1)):
         """
         We compute the horizontal windspeed using four LOS measurements. We
         therefor consider windows of size four.
@@ -322,11 +352,21 @@ def process(
 
         win = df.iloc[i:k]
         time = win.index[0]
+
         if not predicate(win):
             hws.loc[time] = np.nan
             continue
-        win = win.set_index('los_id').sort_index()
-        hws0 = horiz_windspeed(win, dist, hub_hgt, lidar_hgt, azimuths, zeniths)
-        hws.loc[time] = hws0
+
+        win.reset_index(inplace=True)
+        win.set_index('los_id', inplace=True)
+        win.sort_index(inplace=True)
+
+        hws0, extra = (
+            horiz_windspeed(win, dist, hub_hgt, lidar_hgt, azimuths, zeniths))
+
+        row = [hws0]
+        if extra_columns is not None:
+            row += [extra[c] for c in extra_columns]
+        hws.loc[time] = row
 
     return hws.dropna()
