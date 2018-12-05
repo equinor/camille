@@ -152,6 +152,53 @@ def _extend_fwd(end_date, df, src_dirs, tag, fn_regex, tzinfo):
 
 
 def bazefetcher(src_dir, tzinfo=pytz.utc):
+    """Bazefetcher
+
+    Creates a function that can be used to read time series' from specified
+    root directories
+
+    Parameters
+    ----------
+    src_dir : str or iterable of str
+        Path to the bazefetcher root directories
+    tzinfo :datetime.tzinfo
+        Time series timezone
+
+    Returns
+    -------
+    function (str, datetime.datetime, datetime.datetime, str)
+        Function for reading time series from the root directories. Tag split
+        across directories is supported as long as all filenames are unique.
+
+        tag : str
+            The tag of the series to read
+        start : datetime.datetime
+            The start time of the data to be read. Must be timezone aware
+        end : datetime.datetime
+            The end time of the data to be read. Must be timezone aware
+        snap : str
+            'left', 'right' or 'both' (default None).
+            Direction in which returned data should be extended
+
+        Returns
+        -------
+        pandas.TimeSeries
+           Result time series
+
+    Examples
+    --------
+
+    Read time series `series` with tag `tag`:
+
+    >>> start_date = datetime.datetime(2029, 1, 1, tzinfo=pytz.utc)
+    >>> end_date = datetime.datetime(2030, 1, 1, tzinfo=pytz.utc)
+    >>> cin = camille.input.bazefetcher('<root-directory>')
+    >>> ts = cin('tag', start_date, end_date)
+
+    >>> cin = camille.input.bazefetcher(
+    ...           ['tests/test_data/baze', 'tests/test_data/authored'])
+    >>> ts = cin('Perlin', start_date, end_date, snap='both')
+    """
     if isinstance(src_dir, str):
         src_dir = [src_dir]
 
