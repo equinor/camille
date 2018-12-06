@@ -79,21 +79,15 @@ def bazefetcher(root):
     -------
     function (pandas.TimeSeries, str, datetime.datetime, datetime.datetime)
         Function for writing time series' to the bazefetcher root directory
-
-
-    The returned function can be called to write time series' to the root. It
-    takes the following parameters:
-
-    Parameters
-    ----------
-    series : pandas.TimeSeries
-        Time series to write. The time series index must be timezone aware
-    tag : str
-        The tag the series will be written to
-    start : datetime.datetime
-        The start time of the data to be written. Must be timezone aware
-    end : datetime.datetime
-        The end time of the data to be written. Must be timezone aware
+            series : pandas.TimeSeries
+                Time series to write. The time series index must be timezone
+                aware
+            tag : str
+                The tag the series will be written to
+            start : datetime.datetime
+                The start time of the data to be written. Must be timezone aware
+            end : datetime.datetime
+                The end time of the data to be written. Must be timezone aware
 
     Examples
     --------
