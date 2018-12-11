@@ -5,7 +5,9 @@ from camille.source import bazefetcher as bazesource
 import numpy as np
 import os
 import pandas as pd
+import pytest
 
+eps = timedelta(microseconds=1)
 
 def assert_correctly_loaded(expected, basedir, t0, t1, tag="test",
                             tzinfo=utc):
@@ -154,6 +156,133 @@ def test_no_dates_provided(tmpdir):
     assert_files_list(tmpdir, t0.astimezone(utc), 2)
     expected_times = pd.date_range(t0, t1, freq="H", closed="left")
     assert_correct_index(expected_times, tmpdir, t0, t1)
+
+
+def test_multiple_writes_to_same_file(tmpdir):
+    t0 = datetime(2018, 1, 1, 5, tzinfo=utc)
+    t1 = datetime(2018, 1, 1, 10, tzinfo=utc)
+    t2 = datetime(2018, 1, 1, 15, tzinfo=utc)
+
+    rng = pd.date_range(t0, t2, freq='H', name="time", closed='left')
+    data = np.random.randn(len(rng))
+    ts = pd.Series(data, name="value", index=rng)
+
+    bazeout = bazeoutput(str(tmpdir))
+    bazeout(ts, "test", t0, t1)
+    bazeout(ts, "test", t1, t2)
+
+    assert_files_list(tmpdir, t0, 1)
+    assert_correctly_loaded(ts, tmpdir, t0, t2)
+
+
+def test_multiple_writes_to_same_file_with_overlap_no_overwrite(tmpdir):
+    t0 = datetime(2018, 1, 1, 5, tzinfo=utc)
+    t1 = datetime(2018, 1, 1, 8, tzinfo=utc)
+    t2 = datetime(2018, 1, 1, 10, tzinfo=utc)
+    t3 = datetime(2018, 1, 1, 15, tzinfo=utc)
+
+    rng = pd.date_range(t0, t3, freq='H', name="time", closed='left')
+    data = np.random.randn(len(rng))
+    ts = pd.Series(data, name="value", index=rng)
+
+    bazeout = bazeoutput(str(tmpdir))
+    bazeout(ts, "test", t1, t2)
+
+    with pytest.raises(ValueError):
+        bazeout(ts, "test", t0, (t2 - eps))
+    with pytest.raises(ValueError):
+        bazeout(ts, "test", (t1 + eps), t3)
+    with pytest.raises(ValueError):
+        bazeout(ts, "test", (t1 + eps), (t2 - eps))
+    with pytest.raises(ValueError):
+        bazeout(ts, "test", t0, t3)
+
+    assert_files_list(tmpdir, t0, 1)
+    assert_correctly_loaded(ts[t1:(t2-eps)], tmpdir, t1, t2)
+
+
+def test_multiple_writes_to_same_file_with_right_overlap_overwrite(tmpdir):
+    t0 = datetime(2018, 1, 1, 5, tzinfo=utc)
+    t1 = datetime(2018, 1, 1, 8, tzinfo=utc)
+    t2 = datetime(2018, 1, 1, 10, tzinfo=utc)
+    t3 = datetime(2018, 1, 1, 15, tzinfo=utc)
+
+    rng = pd.date_range(t0, t3, freq='H', name="time", closed='left')
+    data = np.random.randn(len(rng))
+    ts = pd.Series(data, name="value", index=rng)
+    data2 = data + 1
+    ts2 = pd.Series(data2, name="value", index=rng)
+
+    bazeout = bazeoutput(str(tmpdir))
+    bazeout(ts, "test", t0, t2)
+    bazeout(ts2, "test", t1, t3, overwrite=True)
+
+    expected = pd.concat([ts[:(t1-eps)], ts2[t1:]],
+                         sort=True)
+    assert_files_list(tmpdir, t0, 1)
+    assert_correctly_loaded(expected, tmpdir, t0, t3)
+
+
+def test_multiple_writes_to_same_file_with_left_overlap_overwrite(tmpdir):
+    t0 = datetime(2018, 1, 1, 5, tzinfo=utc)
+    t1 = datetime(2018, 1, 1, 8, tzinfo=utc)
+    t2 = datetime(2018, 1, 1, 10, tzinfo=utc)
+    t3 = datetime(2018, 1, 1, 15, tzinfo=utc)
+
+    rng = pd.date_range(t0, t3, freq='H', name="time", closed='left')
+    data = np.random.randn(len(rng))
+    ts = pd.Series(data, name="value", index=rng)
+    data2 = data + 1
+    ts2 = pd.Series(data2, name="value", index=rng)
+
+    bazeout = bazeoutput(str(tmpdir))
+    bazeout(ts, "test", t1, t3)
+    bazeout(ts2, "test", t0, t2, overwrite=True)
+
+    expected = pd.concat([ts2[:(t2-eps)], ts[t2:]],
+                         sort=True)
+    assert_files_list(tmpdir, t0, 1)
+    assert_correctly_loaded(expected, tmpdir, t0, t3)
+
+
+def test_multiple_writes_to_same_file_with_internal_overlap_overwrite(tmpdir):
+    t0 = datetime(2018, 1, 1, 5, tzinfo=utc)
+    t1 = datetime(2018, 1, 1, 8, tzinfo=utc)
+    t2 = datetime(2018, 1, 1, 10, tzinfo=utc)
+    t3 = datetime(2018, 1, 1, 15, tzinfo=utc)
+
+    rng = pd.date_range(t0, t3, freq='H', name="time", closed='left')
+    data = np.random.randn(len(rng))
+    ts = pd.Series(data, name="value", index=rng)
+    data2 = data + 1
+    ts2 = pd.Series(data2, name="value", index=rng)
+
+    bazeout = bazeoutput(str(tmpdir))
+    bazeout(ts, "test", t0, t3)
+    bazeout(ts2, "test", t1, t2, overwrite=True)
+
+    expected = pd.concat([ts[:t1-eps], ts2[t1:(t2-eps)], ts[t2:]],
+                         sort=True)
+    assert_files_list(tmpdir, t0, 1)
+    assert_correctly_loaded(expected, tmpdir, t0, t3)
+
+
+def test_multiple_writes_to_same_file_with_full_overlap_overwrite(tmpdir):
+    t0 = datetime(2018, 1, 1, 5, tzinfo=utc)
+    t1 = datetime(2018, 1, 1, 15, tzinfo=utc)
+
+    rng = pd.date_range(t0, t1, freq='H', name="time", closed='left')
+    data = np.random.randn(len(rng))
+    ts = pd.Series(data, name="value", index=rng)
+    data2 = data + 1
+    ts2 = pd.Series(data2, name="value", index=rng)
+
+    bazeout = bazeoutput(str(tmpdir))
+    bazeout(ts, "test", t0, t1)
+    bazeout(ts2, "test", t0, t1, overwrite=True)
+
+    assert_files_list(tmpdir, t0, 1)
+    assert_correctly_loaded(ts2, tmpdir, t0, t1)
 
 
 def get_test_date(day, hour=0, minute=0, second=0, year=2018,
