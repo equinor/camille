@@ -122,9 +122,9 @@ def bazefetcher(root):
         if not start <= end:
             raise ValueError('start_date must be earlier than end_date')
 
-        series = series[start:end]
-
         eps = datetime.timedelta(microseconds=1)
+
+        series = series[start:end-eps]
 
         for s, e in _daterange( start, end ):
             tag_path = _generate_tag_location( root,
