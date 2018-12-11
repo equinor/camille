@@ -2,6 +2,8 @@ import os
 import datetime
 import pytz
 import pandas as pd
+from camille.source.bazefetcher import _safe_read, _tidy_frame
+
 
 def _to_midnight_utc(timestamp):
     """ Copied from bazefetcher, logic modified
@@ -15,7 +17,7 @@ def _to_midnight_utc(timestamp):
         timestamp = pytz.utc.localize(timestamp)
     except ValueError:
         timestamp = timestamp.astimezone(pytz.utc)
-    timestamp = timestamp.replace(hour=0, minute=0, second=0)
+    timestamp = timestamp.replace(hour=0, minute=0, second=0, microsecond=0)
     return timestamp
 
 
@@ -64,6 +66,25 @@ def _generate_tag_location(
     return path
 
 
+def _merge(ts, into, overwrite=False):
+    into_start, into_end = min(into.index), max(into.index)
+    ts_start, ts_end = min(ts.index), max(ts.index)
+
+    overlap = into_start <= ts_end and into_end >= ts_start
+
+    if overlap and not overwrite:
+        msg = (
+            'you are attempting to write data for a time interval'
+            ' that already exists. Set overwrite=True to overwrite.'
+        )
+        raise ValueError(msg)
+
+    eps = datetime.timedelta(microseconds=1)
+    ts = pd.concat([into.value[ts_end+eps:], ts, into.value[:ts_start-eps]])
+
+    return ts
+
+
 def bazefetcher(root):
     """Bazefetcher
 
@@ -104,7 +125,7 @@ def bazefetcher(root):
         raise ValueError('{} is not a directory'.format(root))
 
     def bazefetcher_internal(
-            series, tag=None, start=None, end=None):
+            series, tag=None, start=None, end=None, overwrite=False):
         """
         See Also
         --------
@@ -122,20 +143,20 @@ def bazefetcher(root):
         if not start <= end:
             raise ValueError('start_date must be earlier than end_date')
 
-        series = series[start:end]
-
         eps = datetime.timedelta(microseconds=1)
+
+        series = series[start:end-eps]
 
         for s, e in _daterange( start, end ):
             tag_path = _generate_tag_location( root,
-                                              tag,
-                                              s,
-                                              e,
-                                              full_path=True,
-                                              suffix='.json.gz' )
+                                               tag,
+                                               s,
+                                               e,
+                                               full_path=True,
+                                               suffix='.json.gz' )
 
             ts = series[s:e-eps]
-            ts = pd.DataFrame( { 't':ts.index, 'v':ts.values } )
+            if ts.empty: continue
 
             if not os.path.exists(os.path.dirname(tag_path)):
                 try:
@@ -144,6 +165,12 @@ def bazefetcher(root):
                     if exc.errno != errno.EEXIST:
                         raise
 
+            file_content = _safe_read(tag_path)
+            _tidy_frame(file_content, tzinfo=pytz.utc)
+            if not file_content.empty:
+                ts = _merge(ts, into=file_content, overwrite=overwrite)
+
+            ts = pd.DataFrame( { 't':ts.index, 'v':ts.values } )
             ts.to_json(tag_path, compression='gzip', orient='records' )
 
     return bazefetcher_internal
