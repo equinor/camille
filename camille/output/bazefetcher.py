@@ -15,7 +15,7 @@ def _to_midnight_utc(timestamp):
         timestamp = pytz.utc.localize(timestamp)
     except ValueError:
         timestamp = timestamp.astimezone(pytz.utc)
-    timestamp = timestamp.replace(hour=0, minute=0, second=0)
+    timestamp = timestamp.replace(hour=0, minute=0, second=0, microsecond=0)
     return timestamp
 
 
