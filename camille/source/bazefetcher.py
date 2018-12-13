@@ -192,10 +192,10 @@ def bazefetcher(src_dir, tzinfo=pytz.utc):
 
     >>> start_date = datetime.datetime(2029, 1, 1, tzinfo=pytz.utc)
     >>> end_date = datetime.datetime(2030, 1, 1, tzinfo=pytz.utc)
-    >>> cin = camille.input.bazefetcher('<root-directory>')
+    >>> cin = camille.source.bazefetcher('<root-directory>')
     >>> ts = cin('tag', start_date, end_date)
 
-    >>> cin = camille.input.bazefetcher(
+    >>> cin = camille.source.bazefetcher(
     ...           ['tests/test_data/baze', 'tests/test_data/authored'])
     >>> ts = cin('Perlin', start_date, end_date, snap='both')
     """

@@ -98,17 +98,24 @@ def bazefetcher(root):
 
     Returns
     -------
-    function (pandas.TimeSeries, str, datetime.datetime, datetime.datetime)
+    function (pandas.Series, str, datetime.datetime, datetime.datetime, bool)
         Function for writing time series' to the bazefetcher root directory
-            series : pandas.TimeSeries
+            series : pandas.Series
                 Time series to write. The time series index must be timezone
                 aware
             tag : str
                 The tag the series will be written to
-            start : datetime.datetime
-                The start time of the data to be written. Must be timezone aware
-            end : datetime.datetime
-                The end time of the data to be written. Must be timezone aware
+            start : datetime.datetime, optional
+                The start time of the data to be written. Must be
+                timezone aware. Default is None, which implies series start
+            end : datetime.datetime, optional
+                The end time of the data to be written. Must be
+                timezone aware. Default is None, which implies series end
+            overwrite : bool, optional
+                True - existing data, which overlaps with the data
+                to be written, is deleted.
+                False - raise a ValueError on overwrite attempt.
+                Default is False
 
     Examples
     --------
@@ -119,6 +126,39 @@ def bazefetcher(root):
     >>> end_date = datetime.datetime(2030, 1, 1, tzinfo=pytz.utc)
     >>> cout = camille.output.bazefetcher('<root-directory>')
     >>> cout(series, tag, start_date, end_date)
+
+    Write series to file with existing data:
+
+    >>> start_date = datetime.datetime(2018, 1, 1, 13, tzinfo=pytz.utc)
+    >>> end_date = datetime.datetime(2018, 1, 1, 16, tzinfo=pytz.utc)
+    >>> cin = camille.source.bazefetcher('<root-directory>')
+    >>> ts = cin('tag', start_date, end_date)
+    >>> #print existing data
+    >>> ts
+    time
+    2018-01-01 13:00:00+00:00    11
+    2018-01-01 14:00:00+00:00    22
+    2018-01-01 15:00:00+00:00    33
+    Name: value, dtype: int64
+    >>> series
+    2018-01-01 14:00:00+00:00    66
+    2018-01-01 15:00:00+00:00    77
+    2018-01-01 16:00:00+00:00    88
+    2018-01-01 17:00:00+00:00    99
+    dtype: int64
+    >>> cout = camille.output.bazefetcher('<root-directory>')
+    >>> cout(series, 'tag', overwrite = True)
+    >>> end_date = datetime.datetime(2018, 1, 1, 18, tzinfo=pytz.utc)
+    >>> ts = cin('tag', start_date, end_date)
+    >>> #print updated data
+    >>> ts
+    time
+    2018-01-01 13:00:00+00:00    11
+    2018-01-01 14:00:00+00:00    66
+    2018-01-01 15:00:00+00:00    77
+    2018-01-01 16:00:00+00:00    88
+    2018-01-01 17:00:00+00:00    99
+    Name: value, dtype: int64
 
     """
     if not os.path.isdir(root):
