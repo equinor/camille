@@ -80,7 +80,7 @@ def _merge(ts, into, overwrite=False):
         raise ValueError(msg)
 
     eps = datetime.timedelta(microseconds=1)
-    ts = pd.concat([into.value[ts_end+eps:], ts, into.value[:ts_start-eps]])
+    ts = pd.concat([into.value[:ts_start - eps], ts, into.value[ts_end + eps:]])
 
     return ts
 
