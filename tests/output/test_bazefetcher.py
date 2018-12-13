@@ -28,6 +28,13 @@ def assert_correct_index(expected_index, basedir, start_date, end_date,
     assert (result.index == expected_index).all()
 
 
+def assert_correct_raw_values(expected_series, basedir, file_date, tag="test"):
+    fname = get_test_fname(file_date, tag)
+    path = os.path.join(str(basedir), tag, fname)
+    df = pd.read_json(path)
+    assert np.allclose(df.v.values, expected_series.values)
+
+
 def assert_files_list(basedir, start_date, days, tag="test"):
     """
     Asserts file list output is as expected and contains only all
@@ -221,6 +228,7 @@ def test_multiple_writes_to_same_file_with_right_overlap_overwrite(tmpdir):
                          sort=True)
     assert_files_list(tmpdir, t0, 1)
     assert_correctly_loaded(expected, tmpdir, t0, t3)
+    assert_correct_raw_values(expected, tmpdir, t0)
 
 
 def test_multiple_writes_to_same_file_with_left_overlap_overwrite(tmpdir):
@@ -243,6 +251,7 @@ def test_multiple_writes_to_same_file_with_left_overlap_overwrite(tmpdir):
                          sort=True)
     assert_files_list(tmpdir, t0, 1)
     assert_correctly_loaded(expected, tmpdir, t0, t3)
+    assert_correct_raw_values(expected, tmpdir, t0)
 
 
 def test_multiple_writes_to_same_file_with_internal_overlap_overwrite(tmpdir):
@@ -265,6 +274,7 @@ def test_multiple_writes_to_same_file_with_internal_overlap_overwrite(tmpdir):
                          sort=True)
     assert_files_list(tmpdir, t0, 1)
     assert_correctly_loaded(expected, tmpdir, t0, t3)
+    assert_correct_raw_values(expected, tmpdir, t0)
 
 
 def test_multiple_writes_to_same_file_with_full_overlap_overwrite(tmpdir):
@@ -283,6 +293,7 @@ def test_multiple_writes_to_same_file_with_full_overlap_overwrite(tmpdir):
 
     assert_files_list(tmpdir, t0, 1)
     assert_correctly_loaded(ts2, tmpdir, t0, t1)
+    assert_correct_raw_values(ts2, tmpdir, t0)
 
 
 def get_test_date(day, hour=0, minute=0, second=0, year=2018,
