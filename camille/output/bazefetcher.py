@@ -134,16 +134,15 @@ def bazefetcher(root):
         if tag is None:
             raise ValueError('tag must be specified')
 
+        eps = datetime.timedelta(microseconds=1)
         if start is None: start = series.index[0].to_pydatetime()
-        if end is None: end = series.index[-1].to_pydatetime()
+        if end is None: end = series.index[-1].to_pydatetime() + eps
 
         if start.tzinfo is None or end.tzinfo is None:
             raise ValueError('dates must be timezone aware')
 
         if not start <= end:
             raise ValueError('start_date must be earlier than end_date')
-
-        eps = datetime.timedelta(microseconds=1)
 
         series = series[start:end-eps]
 

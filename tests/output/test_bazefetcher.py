@@ -158,7 +158,7 @@ def test_no_dates_provided(tmpdir):
     rng = get_test_index(t0, t1)
     data = list(map(lambda d: d.isoformat(), rng.to_pydatetime()))
     ts = get_test_series(t0, t1, data=data, rng=rng)
-    generate_output(tmpdir, ts, t0, t1)
+    generate_output(tmpdir, ts)
 
     assert_files_list(tmpdir, t0.astimezone(utc), 2)
     expected_times = pd.date_range(t0, t1, freq="H", closed="left")
