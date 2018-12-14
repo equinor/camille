@@ -1,4 +1,17 @@
-"""Processors
+"""\
+Processors
+==========
+This module is a collection of data processing functions. A processing function
+typically takes a series and returns a processed series.
+
+Available processors
+--------------------
+* :func:`~camille.process.atm_stb`
+* :func:`~camille.process.delta_temp`
+* :func:`~camille.process.fft`
+* :func:`~camille.process.lidar`
+* :func:`~camille.process.low_pass`
+* :func:`~camille.process.mooring_fatigue`
 """
 
 from .atm_stb import process as atm_stb
