@@ -1,4 +1,18 @@
-"""Processors
+"""\
+Processors
+==========
+
+Description
+
+Available processors
+--------------------
+* atm_stb
+* delta_temp
+* fft
+* lidar
+* low_pass
+* mooring_fatigue
+
 """
 
 from .atm_stb import process as atm_stb
