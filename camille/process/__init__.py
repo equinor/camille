@@ -2,7 +2,8 @@
 Processors
 ==========
 
-Description
+This module is a collection of data processing functions. A processing function
+typically takes a set series' and returns a processed series.
 
 Available processors
 --------------------
