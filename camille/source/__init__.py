@@ -1,5 +1,19 @@
-"""Sources
+"""\
+Sources
+==========
+This module is a collection of functions reading inputs.
+
+Notes
+-----
+Used data formats might be too specific, so currently module is mainly
+intended for internal use
+
+Available functions
+-------------------
+* :func:`~camille.source.bazefetcher`
+* :func:`~camille.source.windiris`
 """
+
 
 from .bazefetcher import bazefetcher
 from .windiris import windiris
