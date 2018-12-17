@@ -1,7 +1,33 @@
 import numpy as np
 from scipy.interpolate import interp1d
 
-def sn_curve( stress, t=0, tref=None, k=None, logA=None, m=None ):
+def sn_curve( stress, k=None, logA=None, m=None, t=0, tref=25.0 ):
+    """SN Curve
+
+    Computes the number of stress cycles before failure for the given stress.
+
+    Parameters
+    ----------
+    stress : float or list of float
+        Stress range [MPa]
+    k : float
+        Thickness exponent on fatigue strength
+    logA : float or list of float
+        Intercept of log N axis
+    m : float or list of float
+        Negative inverse slope of S-N curve
+    t : float, optional
+        Thickness [mm] through which a crack will most likely grow. t = tref is
+        used for t < tref
+    tref : float, optional
+        Reference thickness [mm]
+
+    Returns
+    -------
+    float or list of floats
+        Number of stress cycles before failure
+
+    """
     alpha = max( (t/tref)**k, 1  )
     stress = np.array(stress) * alpha
 
