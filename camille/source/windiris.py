@@ -59,6 +59,50 @@ def _sqlite(start_date,
 
 
 def windiris(root, tzinfo=pytz.utc):
+    """
+    Creates a function that can be used to read windiris data from
+    specified root directory
+
+    Parameters
+    ----------
+    root : str
+        Path to windiris data root directory
+    tzinfo : datetime.tzinfo
+        Timezone format for returned timeseries
+    Returns
+    -------
+    function (str, datetime.datetime, datetime.datetime, str, str, str)
+        Function for reading windiris time series from db file
+
+        installation : str
+            Name of the installation to collect data from
+        start : datetime.datetime
+            The start time of the data to be read. Must be timezone aware
+        end : datetime.datetime
+            The end time of the data to be read. Must be timezone aware
+        los_id : int or str, optional
+            LOS Index filter. Default None
+        distance : number or str, optional
+            Distance filter. Default None
+        status : int or str, optional
+            RWS Status filter. Default None
+
+        Returns
+        -------
+        pandas.DataFrame
+           Result dataframe
+
+    Examples
+    --------
+
+    Read year data from installation 'wind'
+
+    >>> wi = windiris('<root>')
+    >>> start = datetime(2017, 6, 12, tzinfo=utc)
+    >>> end = datetime(2018, 6, 12, tzinfo=utc)
+    >>> df = wi('wind', start, end)
+
+    """
     if not os.path.isdir(root):
         raise ValueError('{} is not a directory'.format(root))
 
