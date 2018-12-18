@@ -5,13 +5,22 @@ import rainflow
 import pandas as pd
 from camille.util import sn_curve
 
-def process(series, **kwargs):
-    options = ('window', 'fs')
-    if not all([key in options for key in kwargs.keys()]):
-        raise ArgumentError('Unknown argument(s) {}'
-                            .format(kwargs.keys() - options))
-    window_length = kwargs.get('window', 3600)
-    fs = kwargs.get('fs', 5)
+def process(series, window_length=3600, fs=5):
+    """Calculate fatigue damage
+
+    Parameters
+    ----------
+    series : pandas.Series
+        Bridle tension [kN]
+    window_length : int, optional
+        Length of each window for fatige calculations [s]
+    fs : int or float, optional
+        Sampling frequency [1/s]
+
+    Returns
+    -------
+    pandas.Series
+    """
 
     samples = series.size
     window = math.ceil(window_length * fs)
