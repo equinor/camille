@@ -37,7 +37,7 @@ mooring_fatigue_ref = [6.4859627078e-009, 3.5345447785e-009, 3.9938747139e-009,
 
 def test_process():
     series = pd.Series(data=refcase, name='bridle1')
-    res = process.mooring_fatigue(series, window=1, fs=5)
+    res = process.mooring_fatigue(series, window_length=1, fs=5)
     assert np.allclose( res.values.T, mooring_fatigue_ref )
 
 
