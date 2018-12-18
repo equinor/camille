@@ -23,6 +23,7 @@ before_script:
   - bandit -c bandit.yml -r camille
 
 script:
+  - pip3 install -r requirements-dev.txt
   - python3 setup.py test --verbose
 
 after_success:
