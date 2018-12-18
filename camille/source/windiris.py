@@ -3,6 +3,7 @@ import os
 import pandas as pd
 from math import radians
 import re
+import pytz
 
 def _to_string(x):
     x = re.sub('[^A-Za-z0-9,.]', '', str(x))
@@ -13,6 +14,7 @@ def _sqlite(start_date,
             end_date,
             connection,
             installation,
+            tzinfo,
             los_id=None,
             distance=None,
             status=None):
@@ -30,8 +32,10 @@ def _sqlite(start_date,
 
     df = pd.read_sql_query(query, connection,
                            params={
-                                'start': str(start_date.replace(tzinfo=None)),
-                                'end': str(end_date.replace(tzinfo=None))
+                                'start': str(start_date.astimezone(pytz.utc)
+                                             .replace(tzinfo=None)),
+                                'end': str(end_date.astimezone(pytz.utc)
+                                           .replace(tzinfo=None))
                            },
                            index_col='Timestamp',
                            parse_dates={
@@ -47,13 +51,14 @@ def _sqlite(start_date,
         'Roll': 'roll',
     }, inplace=True)
     df.index.name = 'time'
+    df.index = df.index.tz_convert(tzinfo)
     df.pitch = df.pitch.apply(radians)
     df.roll = df.roll.apply(radians)
 
     return df
 
 
-def windiris(root):
+def windiris(root, tzinfo=pytz.utc):
     def windiris_internal(installation,
                           start_date,
                           end_date,
@@ -62,6 +67,9 @@ def windiris(root):
                           status=None):
         if not os.path.isdir(root):
             raise ValueError('{} is not a directory'.format(root))
+
+        if start_date.tzinfo is None or end_date.tzinfo is None:
+            raise ValueError('dates must be timezone aware')
 
         f = os.path.join(root, installation, installation + '_rtd.db' )
 
@@ -74,6 +82,7 @@ def windiris(root):
                        end_date,
                        conn,
                        installation,
+                       tzinfo,
                        los_id=los_id,
                        distance=distance,
                        status=status)
