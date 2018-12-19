@@ -2,6 +2,7 @@
 from camille.source import windiris
 from datetime import datetime
 from pytz import timezone, utc
+import pytest
 
 wi = windiris('tests/test_data/windiris')
 
@@ -115,3 +116,25 @@ def test_timezone():
            ).all()
 
     assert df.index.tz == data_tzinfo
+
+def test_not_directory():
+    with pytest.raises(ValueError) as exc:
+        windiris('tests/test_data/windiris/inst1/inst1_rtd.db.gz')
+    assert ('not a directory' in str(exc.value))
+
+def test_installation_not_found():
+    date = datetime(2017, 1, 1, tzinfo=utc)
+    with pytest.raises(ValueError) as exc:
+        wi('non_existent_installation', date, date)
+    assert 'not found' in str(exc)
+
+def test_no_time_zone():
+    tz_date = datetime(2017, 1, 1, tzinfo=utc)
+    ntz_date = datetime(2017, 1, 1)
+    with pytest.raises(ValueError) as exc:
+        wi('inst2', tz_date, ntz_date)
+    assert 'timezone aware' in str(exc)
+
+    with pytest.raises(ValueError) as exc:
+        wi('inst2', ntz_date, tz_date)
+    assert 'timezone aware' in str(exc)
