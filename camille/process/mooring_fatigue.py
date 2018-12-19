@@ -13,7 +13,7 @@ def process(series, window_length=3600, fs=5):
     series : pandas.Series
         Bridle tension [kN]
     window_length : int, optional
-        Length of each window for fatige calculations [s]
+        Length of each window for fatigue calculations [s]
     fs : int or float, optional
         Sampling frequency [1/s]
 
