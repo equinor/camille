@@ -55,6 +55,7 @@ def main():
             dfd.index.map(lambda a: a.strftime('%Y-%m-%d %H:%M:%S.%f')))
 
         fname = os.path.join(root, date.strftime('WI_%Y-%m-%d.csv'))
+        os.makedirs(root, exist_ok=True)
         dfd.to_csv(fname, index=False, sep=';')
 
 
