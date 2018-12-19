@@ -59,14 +59,15 @@ def _sqlite(start_date,
 
 
 def windiris(root, tzinfo=pytz.utc):
+    if not os.path.isdir(root):
+        raise ValueError('{} is not a directory'.format(root))
+
     def windiris_internal(installation,
                           start_date,
                           end_date,
                           los_id=None,
                           distance=None,
                           status=None):
-        if not os.path.isdir(root):
-            raise ValueError('{} is not a directory'.format(root))
 
         if start_date.tzinfo is None or end_date.tzinfo is None:
             raise ValueError('dates must be timezone aware')
@@ -74,7 +75,7 @@ def windiris(root, tzinfo=pytz.utc):
         f = os.path.join(root, installation, installation + '_rtd.db' )
 
         if not os.path.isfile(f):
-            raise ValueError('Tag {} not found'.format(tag))
+            raise ValueError('Installation {} not found'.format(installation))
 
         conn = sqlite3.connect(f)
 
