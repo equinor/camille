@@ -6,3 +6,29 @@
 [![PyPI version](https://badge.fury.io/py/camille.svg)](https://badge.fury.io/py/camille)
 
 A dataframe processing toolbox.
+
+## Installation
+
+```bash
+pip install camille
+```
+
+## Usage
+
+```python
+import camille
+import datetime
+import pytz
+
+bazefetcher_source = camille.source.bazefetcher('<bazefetcher_root_dir>')
+bazefetcher_out = camille.output.bazefetcher('<bazefetcher_root_dir>')
+
+begin = datetime.datetime(2017, 11, 1, tzinfo=pytz.utc )
+end = datetime.datetime(2017, 11, 3, tzinfo=pytz.utc )
+
+data = bazefetcher_source('<tag>', begin, end)
+
+processed = camille.process.low_pass(data, sampling_rate=10, cutoff_freq=2)
+
+bazefetcher_out('<tag>', start, end)
+```
