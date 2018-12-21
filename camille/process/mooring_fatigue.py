@@ -7,6 +7,8 @@ from camille.util import sn_curve
 
 def process(series, window_length=3600, fs=5):
     """Calculate fatigue damage
+    Note, that if in the last bin there is not enough data
+    for calculations, it's skipped.
 
     Parameters
     ----------
@@ -20,6 +22,8 @@ def process(series, window_length=3600, fs=5):
     Returns
     -------
     pandas.Series
+        Damage calculations for the given windows. Data is indexed
+        using the window left boundary index.
     """
 
     samples = series.size
@@ -27,10 +31,12 @@ def process(series, window_length=3600, fs=5):
     n_windows = math.floor(samples / window)
 
     damage = np.empty(n_windows)
+    index = []
 
     for w in range(0, n_windows):
         start_idx, end_idx = w * window, (w + 1) * window
         data = series.iloc[start_idx:end_idx]
+        index.append(series.index[start_idx])
 
         if _is_bad_data(data, 100):
             damage[w] = np.nan
@@ -42,7 +48,7 @@ def process(series, window_length=3600, fs=5):
         dmb_calc = seconds_per_year / window_length * dmg
         damage[w] = dmb_calc
 
-    return pd.Series(damage)
+    return pd.Series(damage, index=index)
 
 
 def _calculate_stress(data):

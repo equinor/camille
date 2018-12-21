@@ -38,7 +38,17 @@ mooring_fatigue_ref = [6.4859627078e-009, 3.5345447785e-009, 3.9938747139e-009,
 def test_process():
     series = pd.Series(data=refcase, name='bridle1')
     res = process.mooring_fatigue(series, window_length=1, fs=5)
-    assert np.allclose( res.values.T, mooring_fatigue_ref )
+    assert np.allclose(res.values.T, mooring_fatigue_ref)
+
+
+def test_index_set_to_window_start():
+    index = pd.date_range(start='1/1/2018', periods=len(refcase))
+    series = pd.Series(data=refcase, name='bridle1', index=index)
+
+    assert_index_set_to_window_start(series, 1, 5, index)
+    assert_index_set_to_window_start(series, 2, 5, index)
+    assert_index_set_to_window_start(series, 2, 7, index)
+    assert_index_set_to_window_start(series, 4, 3, index)
 
 
 def test_calc_damage():
@@ -76,3 +86,12 @@ def test_calculate_stress():
                     0.07307389, 0.14614779])
     stress = _calculate_stress(signal)
     assert np.allclose(stress, ref)
+
+
+def assert_index_set_to_window_start(
+        series, window_length, fs, unprocessed_series_index):
+    nsamples = len(series)
+    res = process.mooring_fatigue(series, window_length=window_length, fs=fs)
+    step = window_length * fs
+    first_invalid = nsamples - (nsamples % step)
+    assert (res.index == unprocessed_series_index[:first_invalid:step]).all()
