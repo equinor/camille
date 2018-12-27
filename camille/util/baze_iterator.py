@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import pandas as pd
 from datetime import timedelta, time
+from math import ceil
 
 
 def baze_iterator(baze, tag, start, stop, interval=timedelta(1), padding=timedelta(0), leftpad=True, rightpad=False):
@@ -77,10 +78,11 @@ def baze_iterator(baze, tag, start, stop, interval=timedelta(1), padding=timedel
     _check_time(stop)
     _check_timedelta(interval)
 
-    beg = pd.date_range(start, stop - interval, freq=interval)
-    end = pd.date_range(start + interval, stop, freq=interval)
+    periods = ceil((stop - start)/interval)
+    beg = pd.date_range(start=start, periods=periods, freq=interval)
 
-    for b, e in zip(beg, end):
+    for b, e in zip(beg, beg + interval):
+        e = min(e, stop)
         lrange, rrange = b, e
         if leftpad: lrange = b - padding
         if rightpad: rrange = e + padding
