@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 from camille.source import bazefetcher
-from camille.util import baze_iterator
-from camille.util.baze_iterator import _check_time
-from camille.util.baze_iterator import _check_timedelta
+from camille.util import BazeIter
 from datetime import datetime, timedelta
 from math import pi
 from pytz import utc
@@ -12,12 +10,14 @@ import numpy as np
 
 
 baze = bazefetcher('tests/test_data/baze')
-tag = 'Sin-T60s-SR01hz'
+sin_tag = 'Sin-T60s-SR01hz'
+cos_tag = 'Cos-T60s-SR01hz'
 
 t1 = datetime(2030, 1, 1, tzinfo=utc)
 t2 = datetime(2030, 1, 2, tzinfo=utc)
 t3 = datetime(2030, 1, 3, tzinfo=utc)
 t4 = datetime(2030, 1, 4, tzinfo=utc)
+eps = timedelta(microseconds=1)
 
 invalid_date = datetime(2030, 1, 1, 10, tzinfo=utc)
 invalid_interval = timedelta(1.5)
@@ -28,10 +28,11 @@ t = trng.map(lambda t: (t - t1).total_seconds())
 _sin = pd.Series(np.sin(t * pi / 6), index=trng, name='value')
 #sin data are spaced per every 10 seconds
 day_data_length = 24 * 60 * 6
+_cos = pd.Series(np.cos(t * pi / 6), index=trng, name='value')
 
-def sin(t0=t1, tn=t4):
-    eps = timedelta(microseconds=1)
-    return _sin[t0:tn - eps]
+
+def sin(t0=t1, tn=t4): return _sin[t0:tn - eps]
+def cos(t0=t1, tn=t4): return _cos[t0:tn - eps]
 
 
 def test_baze_iterator():
@@ -43,18 +44,31 @@ def test_baze_iterator():
     assert  ind == 0
 
 
+def test_BazeIter():
+    for data, s, e in BazeIter(baze, sin_tag, t1, t2):
+        assert len(data[sin_tag]) == 8640
+        pd.testing.assert_series_equal(data[sin_tag], sin(s, e))
+
+
+def test_BazeIter_tag_list():
+    for data, s, e in BazeIter(baze, [sin_tag, cos_tag], t1, t2):
+        assert len(data) == 8640
+        pd.testing.assert_series_equal(data[sin_tag], sin(s, e))
+        pd.testing.assert_series_equal(data[cos_tag], cos(s, e))
+
+
 def test_left_padding():
     padding = timedelta(hours=1)
-    for data, s, e in baze_iterator(baze, tag, t2, t3, padding=padding):
-        assert len(data) == 9000
-        pd.testing.assert_series_equal(data, sin(s - padding, e))
+    for data, s, e in BazeIter(baze, sin_tag, t2, t3, padding=padding):
+        assert len(data[sin_tag]) == 9000
+        pd.testing.assert_series_equal(data[sin_tag], sin(s - padding, e))
 
 
 def test_right_padding():
     padding = timedelta(hours=1)
-    for data, s, e in baze_iterator(baze, tag, t2, t3, padding=padding, leftpad=False, rightpad=True):
-        assert len(data) == 9000
-        pd.testing.assert_series_equal(data, sin(s, e + padding))
+    for data, s, e in BazeIter(baze, sin_tag, t2, t3, padding=padding, leftpad=False, rightpad=True):
+        assert len(data[sin_tag]) == 9000
+        pd.testing.assert_series_equal(data[sin_tag], sin(s, e + padding))
 
 
 def test_time_check():
