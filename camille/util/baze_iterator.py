@@ -2,38 +2,18 @@
 import pandas as pd
 from datetime import timedelta, time
 from math import ceil
+from collections import abc
 
 
-def baze_iterator(baze, tag, start, stop, interval=timedelta(1), padding=timedelta(0), leftpad=True, rightpad=False):
-    """ Bazefetcher iterator
+class BazeIter(abc.Iterable, abc.Sized):
+    """Bazefetcher iterator
+
 
     Creates pandas.Series from camille.source.bazefetcher() as iterations of the
     time range [start, stop> at given intervals. Returns the Pandas.Series,
     start, stop for each iteration. The timerange for the returned Pandas.Series
     includes (optional) padding, while the start and stop does not.
 
-
-    Parameters
-    ----------
-
-    baze : camille.source.bazefetcher(root)
-        The bazefetcher source function
-    tag : str
-        The tag the series will be written from
-    start : datetime.datetime
-        The start time of the data to be read (Inclusive)
-        Must be timezone aware
-    stop : datetime.datetime
-        The start time of the data to be read (Exclusive)
-        Must be timezone aware
-    interval : datetime.timedelta
-        The interval of the iterations. Must be days. Defaults to 1
-    padding : datetime.timedelta
-        The padding that is applied to each iteration. Defaults to 0
-    leftpad : Bool
-        Add the padding to the start of each iteration. Defaults to True
-    rightpad : Bool
-        Add the padding to the end of each iteration. Defaults to False
 
     Returns
     -------
@@ -46,10 +26,7 @@ def baze_iterator(baze, tag, start, stop, interval=timedelta(1), padding=timedel
     end : list of datetime.datetime
         The end time for all iterations. Does not include padding
 
-    Raises
-    ------
-    ValueError
-        If start dates are not at midnight or timedelta is not in days.
+
 
     See Also
     --------
@@ -70,32 +47,69 @@ def baze_iterator(baze, tag, start, stop, interval=timedelta(1), padding=timedel
     >>> start_date = datetime.datetime(..., tzinfo=utc)
     >>> end_date = datetime.datetime(..., tzinfo=utc)
     >>> padding  = datetime.timedelta(...)
-    >>> for series, s, e in baze_iterator(baze, tag, start_date, end_date, padding=padding):
+    >>> it = baze_iterator(baze, tag, start_date, end_date, padding=padding)
+    >>> for series, s, e in it:
     ...     #do something
 
     """
-    _check_time(start)
-    _check_time(stop)
-    _check_timedelta(interval)
 
-    periods = ceil((stop - start)/interval)
-    beg = pd.date_range(start=start, periods=periods, freq=interval)
+    def __init__(self, baze, tags, start=None, stop=None, interval=timedelta(1),
+                 padding=timedelta(0), leftpad=True, rightpad=False, **kwargs):
+        """
+        Parameters
+        ----------
 
-    for b, e in zip(beg, beg + interval):
-        e = min(e, stop)
-        lrange, rrange = b, e
-        if leftpad: lrange = b - padding
-        if rightpad: rrange = e + padding
-        yield baze(tag, lrange, rrange), b, e
+        baze : camille.source.bazefetcher(root)
+            The bazefetcher source function
+        tag : str or list of str
+            The tag the series will be written from
+        start : datetime.datetime
+            The start time of the data to be read (Inclusive)
+            Must be timezone aware
+        stop : datetime.datetime
+            The start time of the data to be read (Exclusive)
+            Must be timezone aware
+        interval : datetime.timedelta
+            The interval of the iterations. Must be days. Defaults to 1
+        padding : datetime.timedelta
+            The padding that is applied to each iteration. Defaults to 0
+        leftpad : Bool
+            Add the padding to the start of each iteration. Defaults to True
+        rightpad : Bool
+            Add the padding to the end of each iteration. Defaults to False
+        """
 
 
-def _check_time(dt):
-    errormsg = "Both start and stop date must start at midnight"
-    if dt.time() != time(0,0):
-        raise ValueError(errormsg)
+
+        self.baze = baze
+        self.tags = tags
+        self.interval = interval
+        self.padding = padding
+        self.leftpad = leftpad
+        self.rightpad = rightpad
+        self.start = start
+        self.stop = stop
+        periods = ceil((stop - start) / interval)
+        self.beg = pd.date_range(start=start, periods=periods, freq=interval)
+        self.end = self.beg + interval
+        self.it = list(zip(self.beg, self.end))
+        self.kwargs = kwargs
 
 
-def _check_timedelta(td):
-    errormsg = "Interval must be in day(s)"
-    if td.microseconds != 0 or td.seconds != 0:
-        raise ValueError(errormsg)
+    def __iter__(self):
+        for b, e in self.it:
+            e = min(e, self.stop)
+            lrange, rrange = b, e
+            if self.leftpad: lrange = b - self.padding
+            if self.rightpad: rrange = e + self.padding
+
+            if isinstance(self.tags, str):
+                d = self.baze(self.tags, lrange, rrange, **self.kwargs)
+            else:
+                d = {t: self.baze(t, lrange, rrange, **self.kwargs)
+                     for t in self.tags}
+
+            yield d, b, e
+
+    def __len__(self):
+        return len(self.it)

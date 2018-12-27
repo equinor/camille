@@ -10,12 +10,12 @@ Available functions
 * :func:`~camille.util.sn_curve`
 """
 
-from .baze_iterator import baze_iterator
+from .baze_iterator import BazeIter
 from .resample import resample
 from .sncurves import sn_curve
 
 __all__ = [
-    'baze_iterator',
+    'BazeIter',
     'resample',
     'sn_curve',
 ]
