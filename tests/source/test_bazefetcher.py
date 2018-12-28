@@ -206,3 +206,12 @@ def test_many_roots_same_filename():
         many_roots("root_tag", t1_1, t1_5)
     assert ('files [\'root_tag_2030-01-03T00.00.00+00.00_2030-01-04T00.00.00'
             '+00.00.json.gz\'] are not unique' in str(excinfo.value))
+
+
+def test_no_time_boundaries():
+    sin_b = baze('Sin-T60s-SR01hz')
+    assert len(sin_b) == 34560 # 4 days
+    pd.testing.assert_series_equal(sin_b, sin(t1_1, t1_5))
+    assert sin_b.index[0] == t1_1
+    assert sin_b.index[-1] < t1_5
+    assert (t1_1 - sin_b.index[-1]).to_pytimedelta() < timedelta(seconds=20)

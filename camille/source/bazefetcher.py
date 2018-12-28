@@ -210,8 +210,8 @@ def bazefetcher(src_dir, tzinfo=pytz.utc):
         raise ValueError('tzinfo must be instance of datetime.tzinfo')
 
     def bazefetcher_internal(tag,
-                             start_date,
-                             end_date,
+                             start_date=datetime.datetime(1677, 9, 22, tzinfo=pytz.utc),
+                             end_date=datetime.datetime(2262, 4, 11, tzinfo=pytz.utc),
                              snap=None):
         if start_date.tzinfo is None or end_date.tzinfo is None:
             raise ValueError('dates must be timezone aware')
