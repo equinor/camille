@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from pytz import utc, timezone
 from camille.output import bazefetcher as bazeoutput
-from camille.source import bazefetcher as bazesource
+from camille.source import Bazefetcher as Bazesource
 import numpy as np
 import os
 import pandas as pd
@@ -11,7 +11,7 @@ eps = timedelta(microseconds=1)
 
 def assert_correctly_loaded(expected, basedir, t0, t1, tag="test",
                             tzinfo=utc):
-    bazein = bazesource(str(basedir))
+    bazein = Bazesource(str(basedir))
     result = bazein(tag, t0, t1)
 
     new_index = result.index.tz_convert(tzinfo)
@@ -21,7 +21,7 @@ def assert_correctly_loaded(expected, basedir, t0, t1, tag="test",
 
 def assert_correct_index(expected_index, basedir, start_date, end_date,
                          tag="test"):
-    bazein = bazesource(str(basedir))
+    bazein = Bazesource(str(basedir))
     result = bazein(tag, start_date, end_date)
 
     assert result.size == len(expected_index)

@@ -151,25 +151,57 @@ def _extend_fwd(end_date, df, src_dirs, tag, fn_regex, tzinfo):
     return df, end_date
 
 
-def bazefetcher(src_dir, tzinfo=pytz.utc):
+class Bazefetcher:
     """Bazefetcher
 
-    Creates a function that can be used to read time series' from specified
-    root directories
+    Callable object that can be used to read time series from specified root
+    directories. Tag split across directories is supported as long as all
+    filenames are unique.
 
-    Parameters
+    Attributes
     ----------
     src_dir : str or iterable of str
         Path to the bazefetcher root directories
     tzinfo :datetime.tzinfo
         Time series timezone
 
-    Returns
-    -------
-    function (str, datetime.datetime, datetime.datetime, str)
-        Function for reading time series from the root directories. Tag split
-        across directories is supported as long as all filenames are unique.
+    Examples
+    --------
 
+    Read time series `series` with tag `tag`:
+
+    >>> start_date = datetime.datetime(2029, 1, 1, tzinfo=pytz.utc)
+    >>> end_date = datetime.datetime(2030, 1, 1, tzinfo=pytz.utc)
+    >>> cin = camille.source.Bazefetcher('<root-directory>')
+    >>> ts = cin('tag', start_date, end_date)
+
+    >>> cin = camille.source.Bazefetcher(
+    ...           ['tests/test_data/baze', 'tests/test_data/authored'])
+    >>> ts = cin('Perlin', start_date, end_date, snap='both')
+    """
+
+    def __init__(self, src_dir, tzinfo=pytz.utc):
+        if isinstance(src_dir, str):
+            src_dir = [src_dir]
+
+        src_dirs = [dr for dr in src_dir if isdir(dr)]
+        if not src_dirs:
+            raise ValueError('no file in {} is a directory'.format(src_dir))
+
+        if not isinstance(tzinfo, datetime.tzinfo):
+            raise ValueError('tzinfo must be instance of datetime.tzinfo')
+
+        self.src_dirs = src_dirs
+        self.tzinfo = tzinfo
+
+    def __call__(self,
+                 tag,
+                 start_date=datetime.datetime(1677, 9, 22, tzinfo=pytz.utc),
+                 end_date=datetime.datetime(2262, 4, 11, tzinfo=pytz.utc),
+                 snap=None):
+        """
+        Parameters
+        ----------
         tag : str
             The tag of the series to read
         start : datetime.datetime
@@ -183,36 +215,8 @@ def bazefetcher(src_dir, tzinfo=pytz.utc):
         Returns
         -------
         pandas.TimeSeries
-           Result time series
-
-    Examples
-    --------
-
-    Read time series `series` with tag `tag`:
-
-    >>> start_date = datetime.datetime(2029, 1, 1, tzinfo=pytz.utc)
-    >>> end_date = datetime.datetime(2030, 1, 1, tzinfo=pytz.utc)
-    >>> cin = camille.source.bazefetcher('<root-directory>')
-    >>> ts = cin('tag', start_date, end_date)
-
-    >>> cin = camille.source.bazefetcher(
-    ...           ['tests/test_data/baze', 'tests/test_data/authored'])
-    >>> ts = cin('Perlin', start_date, end_date, snap='both')
-    """
-    if isinstance(src_dir, str):
-        src_dir = [src_dir]
-
-    src_dirs = [dr for dr in src_dir if isdir(dr)]
-    if not src_dirs:
-        raise ValueError('no file in {} is a directory'.format(src_dir))
-
-    if not isinstance(tzinfo, datetime.tzinfo):
-        raise ValueError('tzinfo must be instance of datetime.tzinfo')
-
-    def bazefetcher_internal(tag,
-                             start_date=datetime.datetime(1677, 9, 22, tzinfo=pytz.utc),
-                             end_date=datetime.datetime(2262, 4, 11, tzinfo=pytz.utc),
-                             snap=None):
+           Loaded time series
+        """
         if start_date.tzinfo is None or end_date.tzinfo is None:
             raise ValueError('dates must be timezone aware')
 
@@ -221,30 +225,30 @@ def bazefetcher(src_dir, tzinfo=pytz.utc):
 
         fn_regex = re.compile(tag + fn_tail_pattern)
 
-        files = _get_files(src_dirs, tag, fn_regex,
+        files = _get_files(self.src_dirs, tag, fn_regex,
                            lambda fn : _fn_start_date(fn) <= end_date
                                        and start_date <= _fn_end_date(fn))
 
         L = [_safe_read(fn) for fn in files]
         df = pd.concat(L, sort=True) if len(L) > 0 else pd.DataFrame()
 
-        _tidy_frame(df, tzinfo)
+        _tidy_frame(df, self.tzinfo)
 
         if snap == 'left' or snap == 'both':
             df, start_date = _extend_bwd(start_date,
                                          df,
-                                         src_dirs,
+                                         self.src_dirs,
                                          tag,
                                          fn_regex,
-                                         tzinfo)
+                                         self.tzinfo)
 
         if snap == 'right' or snap == 'both':
             df, end_date = _extend_fwd(end_date,
                                        df,
-                                       src_dirs,
+                                       self.src_dirs,
                                        tag,
                                        fn_regex,
-                                       tzinfo)
+                                       self.tzinfo)
 
         try:
             eps = datetime.timedelta(microseconds=1)
@@ -254,5 +258,3 @@ def bazefetcher(src_dir, tzinfo=pytz.utc):
             pass
 
         return ts
-
-    return bazefetcher_internal

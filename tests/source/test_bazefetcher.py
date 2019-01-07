@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from camille.source import bazefetcher
+from camille.source import Bazefetcher
 from datetime import datetime, timedelta
 from math import pi
 from pytz import utc
@@ -8,8 +8,8 @@ import pandas as pd
 import pytest
 
 
-authored = bazefetcher('tests/test_data/authored')
-baze = bazefetcher('tests/test_data/baze')
+authored = Bazefetcher('tests/test_data/authored')
+baze = Bazefetcher('tests/test_data/baze')
 
 t12_31_22 = datetime(2029, 12, 31, 22, tzinfo=utc)
 t12_31_23 = datetime(2029, 12, 31, 23, tzinfo=utc)
@@ -103,7 +103,7 @@ def test_read_outside_timeseries_in_file():
 
 def test_no_directories():
     with pytest.raises(ValueError) as excinfo:
-        bazefetcher('tests/test_data/baze/perling')
+        Bazefetcher('tests/test_data/baze/perling')
     assert ('no file in [\'tests/test_data/baze/perling\'] is a directory'
             in str(excinfo.value))
 
@@ -173,7 +173,7 @@ def test_snap_both():
 
 
 def test_many_roots():
-    baze_and_authored = bazefetcher(
+    baze_and_authored = Bazefetcher(
         ['tests/test_data/authored', 'tests/test_data/baze'])
 
     sin_b = baze_and_authored('Sin-T60s-SR01hz', t1_2, t1_4)
@@ -186,7 +186,7 @@ def test_many_roots():
 def test_many_roots_same_tag():
     roots = ['tests/test_data/many_roots/dir'+ str(index)
              for index in [3, 1, 2]]
-    many_roots = bazefetcher(roots)
+    many_roots = Bazefetcher(roots)
     tag = "root_tag"
     root = many_roots(tag, t1_1, t1_5)
     assert len(root) == 7
@@ -201,7 +201,7 @@ def test_many_roots_same_tag():
 def test_many_roots_same_filename():
     roots = ['tests/test_data/many_roots/dir'+ str(index)
              for index in [1, 4]]
-    many_roots = bazefetcher(roots)
+    many_roots = Bazefetcher(roots)
     with pytest.raises(ValueError) as excinfo:
         many_roots("root_tag", t1_1, t1_5)
     assert ('files [\'root_tag_2030-01-03T00.00.00+00.00_2030-01-04T00.00.00'

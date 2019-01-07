@@ -15,7 +15,7 @@ Available functions
 """
 
 
-from .bazefetcher import bazefetcher
+from .bazefetcher import Bazefetcher
 from .windiris import windiris
 
 

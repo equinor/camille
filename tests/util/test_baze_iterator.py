@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from camille.source import bazefetcher
+from camille.source import Bazefetcher
 from camille.util import BazeIter
 from datetime import datetime, timedelta
 from math import pi
@@ -9,7 +9,7 @@ import pandas as pd
 import numpy as np
 
 
-baze = bazefetcher('tests/test_data/baze')
+baze = Bazefetcher('tests/test_data/baze')
 sin_tag = 'Sin-T60s-SR01hz'
 cos_tag = 'Cos-T60s-SR01hz'
 
