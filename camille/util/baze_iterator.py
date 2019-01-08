@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 import pandas as pd
 from datetime import timedelta, time
+import os
+from os.path import isdir, join
+from camille.source.bazefetcher import _fn_start_date, _fn_end_date
+import re
 from math import ceil
 from collections import abc
 
@@ -83,7 +87,10 @@ class BazeIter(abc.Iterable, abc.Sized):
             baze_fetcher source for the given keyword
         """
 
-
+        if start is None:
+            start = _find_start_time(baze, tags)
+        if stop is None:
+            stop = _find_stop_time(baze, tags)
 
         self.baze = baze
         self.tags = tags
@@ -119,3 +126,36 @@ class BazeIter(abc.Iterable, abc.Sized):
 
     def __len__(self):
         return len(self.it)
+
+
+def _get_files(src_dirs, tags):
+    tags = [tags] if isinstance(tags, str) else tags
+
+    tag_roots = [ join(dr, tag)
+                  for dr in src_dirs
+                  for tag in tags
+                  if isdir( join(dr, tag) ) ]
+
+    if not tag_roots:
+        msg = 'None of the tags {} were found in {}'.format(tags, src_dirs)
+        raise ValueError(msg)
+
+    fn_rgx = r'.*\.json\.gz$'
+    file_names = [join(r, fn)
+                  for r in tag_roots
+                  for fn in os.listdir(r)
+                  if re.match(fn_rgx, fn)]
+
+    return file_names
+
+
+def _find_start_time(baze, tags):
+    files = _get_files(baze.src_dirs, tags)
+    file_dates = [ _fn_start_date(fn) for fn in files ]
+    return min( file_dates )
+
+
+def _find_stop_time(baze, tags):
+    files = _get_files(baze.src_dirs, tags)
+    file_dates = [ _fn_end_date(fn) for fn in files ]
+    return max( file_dates )

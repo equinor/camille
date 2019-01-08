@@ -108,3 +108,26 @@ def test_pass_additional_kwarg_list():
     for data, _, _ in BazeIter(baze, [sin_tag, cos_tag], t2, t3, tag_kwargs=d):
         assert len(data[cos_tag]) == 8640
         assert len(data[sin_tag]) == 8641
+
+
+def test_no_time_boundaries():
+    t_end = datetime(2030, 1, 5, tzinfo=utc)
+    s_dates = [t1, t3]
+    e_dates = [t3, t_end]
+    for ind, (data, s, e) in enumerate(BazeIter(baze, sin_tag, interval=timedelta(2))):
+        assert  s == s_dates[ind]
+        assert  e == e_dates[ind]
+        assert len(data) == day_data_length * 2
+    assert ind == 1
+
+
+def test_no_time_boundaries_multiple_tags():
+    t_end = datetime(2030, 1, 5, tzinfo=utc)
+    s_dates = [t1, t3]
+    e_dates = [t3, t_end]
+    for ind, (data, s, e) in enumerate(BazeIter(baze, [sin_tag, cos_tag], interval=timedelta(2))):
+        assert  s == s_dates[ind]
+        assert  e == e_dates[ind]
+        assert len(data[sin_tag]) == day_data_length * 2
+        assert len(data[cos_tag]) == day_data_length * 2
+    assert ind == 1
