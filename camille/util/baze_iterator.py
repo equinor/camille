@@ -54,7 +54,8 @@ class BazeIter(abc.Iterable, abc.Sized):
     """
 
     def __init__(self, baze, tags, start=None, stop=None, interval=timedelta(1),
-                 padding=timedelta(0), leftpad=True, rightpad=False, **kwargs):
+                 padding=timedelta(0), leftpad=True, rightpad=False,
+                 tag_kwargs={}):
         """
         Parameters
         ----------
@@ -77,6 +78,9 @@ class BazeIter(abc.Iterable, abc.Sized):
             Add the padding to the start of each iteration. Defaults to True
         rightpad : Bool
             Add the padding to the end of each iteration. Defaults to False
+        tag_kwargs : dict
+            Dictionary of additional key arguments to pass when running
+            baze_fetcher source for the given keyword
         """
 
 
@@ -93,7 +97,7 @@ class BazeIter(abc.Iterable, abc.Sized):
         self.beg = pd.date_range(start=start, periods=periods, freq=interval)
         self.end = self.beg + interval
         self.it = list(zip(self.beg, self.end))
-        self.kwargs = kwargs
+        self.tag_kwargs = tag_kwargs
 
 
     def __iter__(self):
@@ -104,9 +108,11 @@ class BazeIter(abc.Iterable, abc.Sized):
             if self.rightpad: rrange = e + self.padding
 
             if isinstance(self.tags, str):
-                d = self.baze(self.tags, lrange, rrange, **self.kwargs)
+                d = self.baze(self.tags, lrange, rrange,
+                              **self.tag_kwargs.get(self.tags, {}))
             else:
-                d = {t: self.baze(t, lrange, rrange, **self.kwargs)
+                d = {t: self.baze(t, lrange, rrange,
+                                  **self.tag_kwargs.get(t, {}))
                      for t in self.tags}
 
             yield d, b, e

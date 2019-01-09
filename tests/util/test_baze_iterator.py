@@ -95,3 +95,16 @@ def test_interval_not_fitting_range():
         assert  e == e_dates[ind]
         assert len(data) == day_data_length * exp_days[ind]
     assert  ind == 1
+
+
+def test_pass_additional_kwarg():
+    d = {sin_tag : {'snap' : 'both'}}
+    for data, s, e in BazeIter(baze, sin_tag, t2, t3, tag_kwargs=d):
+        assert len(data) == 8641
+
+
+def test_pass_additional_kwarg_list():
+    d = {sin_tag: {'snap': 'both'}}
+    for data, s, e in BazeIter(baze, [sin_tag, cos_tag], t2, t3, tag_kwargs=d):
+        assert len(data[cos_tag]) == 8640
+        assert len(data[sin_tag]) == 8641
