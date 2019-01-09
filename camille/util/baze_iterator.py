@@ -55,7 +55,7 @@ class BazeIter(abc.Iterable, abc.Sized):
 
     def __init__(self, baze, tags, start=None, stop=None, interval=timedelta(1),
                  padding=timedelta(0), leftpad=True, rightpad=False,
-                 tag_kwargs={}):
+                 tag_kwargs=None):
         """
         Parameters
         ----------
@@ -97,7 +97,7 @@ class BazeIter(abc.Iterable, abc.Sized):
         self.beg = pd.date_range(start=start, periods=periods, freq=interval)
         self.end = self.beg + interval
         self.it = list(zip(self.beg, self.end))
-        self.tag_kwargs = tag_kwargs
+        self.tag_kwargs = tag_kwargs if tag_kwargs is not None else {}
 
 
     def __iter__(self):
