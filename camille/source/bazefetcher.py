@@ -223,7 +223,7 @@ def bazefetcher(src_dir, tzinfo=pytz.utc):
 
         files = _get_files(src_dirs, tag, fn_regex,
                            lambda fn : _fn_start_date(fn) <= end_date
-                                       and start_date <= _fn_end_date(fn))
+                                       and start_date < _fn_end_date(fn))
 
         L = [_safe_read(fn) for fn in files]
         df = pd.concat(L, sort=True) if len(L) > 0 else pd.DataFrame()
