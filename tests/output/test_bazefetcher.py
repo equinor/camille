@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from pytz import utc, timezone
-from camille.output import bazefetcher as bazeoutput
+from camille.output import Bazefetcher as Bazeoutput
 from camille.source import Bazefetcher as Bazesource
 import numpy as np
 import os
@@ -73,7 +73,7 @@ def test_one_day_one_file(tmpdir):
     data = np.random.randn(len(rng))
     ts = pd.Series(data, name="value", index=rng)
 
-    bazeout = bazeoutput(str(tmpdir))
+    bazeout = Bazeoutput(str(tmpdir))
     bazeout(ts, "test", t0, t1)
 
     assert_files_list(tmpdir, t0, 1)
@@ -174,7 +174,7 @@ def test_multiple_writes_to_same_file(tmpdir):
     data = np.random.randn(len(rng))
     ts = pd.Series(data, name="value", index=rng)
 
-    bazeout = bazeoutput(str(tmpdir))
+    bazeout = Bazeoutput(str(tmpdir))
     bazeout(ts, "test", t0, t1)
     bazeout(ts, "test", t1, t2)
 
@@ -192,7 +192,7 @@ def test_multiple_writes_to_same_file_with_overlap_no_overwrite(tmpdir):
     data = np.random.randn(len(rng))
     ts = pd.Series(data, name="value", index=rng)
 
-    bazeout = bazeoutput(str(tmpdir))
+    bazeout = Bazeoutput(str(tmpdir))
     bazeout(ts, "test", t1, t2)
 
     with pytest.raises(ValueError):
@@ -220,7 +220,7 @@ def test_multiple_writes_to_same_file_with_right_overlap_overwrite(tmpdir):
     data2 = data + 1
     ts2 = pd.Series(data2, name="value", index=rng)
 
-    bazeout = bazeoutput(str(tmpdir))
+    bazeout = Bazeoutput(str(tmpdir))
     bazeout(ts, "test", t0, t2)
     bazeout(ts2, "test", t1, t3, overwrite=True)
 
@@ -243,7 +243,7 @@ def test_multiple_writes_to_same_file_with_left_overlap_overwrite(tmpdir):
     data2 = data + 1
     ts2 = pd.Series(data2, name="value", index=rng)
 
-    bazeout = bazeoutput(str(tmpdir))
+    bazeout = Bazeoutput(str(tmpdir))
     bazeout(ts, "test", t1, t3)
     bazeout(ts2, "test", t0, t2, overwrite=True)
 
@@ -266,7 +266,7 @@ def test_multiple_writes_to_same_file_with_internal_overlap_overwrite(tmpdir):
     data2 = data + 1
     ts2 = pd.Series(data2, name="value", index=rng)
 
-    bazeout = bazeoutput(str(tmpdir))
+    bazeout = Bazeoutput(str(tmpdir))
     bazeout(ts, "test", t0, t3)
     bazeout(ts2, "test", t1, t2, overwrite=True)
 
@@ -287,7 +287,7 @@ def test_multiple_writes_to_same_file_with_full_overlap_overwrite(tmpdir):
     data2 = data + 1
     ts2 = pd.Series(data2, name="value", index=rng)
 
-    bazeout = bazeoutput(str(tmpdir))
+    bazeout = Bazeoutput(str(tmpdir))
     bazeout(ts, "test", t0, t1)
     bazeout(ts2, "test", t0, t1, overwrite=True)
 
@@ -320,5 +320,5 @@ def get_test_series(start_date=None, end_date=None,
 
 
 def generate_output(basedir, ts, start_date=None, end_date=None, tag="test"):
-    bazeout = bazeoutput(str(basedir))
+    bazeout = Bazeoutput(str(basedir))
     bazeout(ts, tag, start_date, end_date)

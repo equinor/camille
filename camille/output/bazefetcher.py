@@ -85,37 +85,16 @@ def _merge(ts, into, overwrite=False):
     return ts
 
 
-def bazefetcher(root):
+class Bazefetcher:
     """Bazefetcher
 
-    Creates a function that can be used to write time series' to the specified
-    root directory
+    Creates a callable object that can be used to write time series' to the
+    specified root directory
 
     Parameters
     ----------
     root : str or path-like
         Path to the bazefetcher root directory
-
-    Returns
-    -------
-    function (pandas.Series, str, datetime.datetime, datetime.datetime, bool)
-        Function for writing time series' to the bazefetcher root directory
-            series : pandas.Series
-                Time series to write. The time series index must be timezone
-                aware
-            tag : str
-                The tag the series will be written to
-            start : datetime.datetime, optional
-                The start time of the data to be written. Must be
-                timezone aware. Default is None, which implies series start
-            end : datetime.datetime, optional
-                The end time of the data to be written. Must be
-                timezone aware. Default is None, which implies series end
-            overwrite : bool, optional
-                True - existing data, which overlaps with the data
-                to be written, is deleted.
-                False - raise a ValueError on overwrite attempt.
-                Default is False
 
     Examples
     --------
@@ -124,14 +103,14 @@ def bazefetcher(root):
 
     >>> start_date = datetime.datetime(2029, 1, 1, tzinfo=pytz.utc)
     >>> end_date = datetime.datetime(2030, 1, 1, tzinfo=pytz.utc)
-    >>> cout = camille.output.bazefetcher('<root-directory>')
+    >>> cout = camille.output.Bazefetcher('<root-directory>')
     >>> cout(series, tag, start_date, end_date)
 
     Write series to file with existing data:
 
     >>> start_date = datetime.datetime(2018, 1, 1, 13, tzinfo=pytz.utc)
     >>> end_date = datetime.datetime(2018, 1, 1, 16, tzinfo=pytz.utc)
-    >>> cin = camille.source.bazefetcher('<root-directory>')
+    >>> cin = camille.source.Bazefetcher('<root-directory>')
     >>> ts = cin('tag', start_date, end_date)
     >>> #print existing data
     >>> ts
@@ -146,7 +125,7 @@ def bazefetcher(root):
     2018-01-01 16:00:00+00:00    88
     2018-01-01 17:00:00+00:00    99
     dtype: int64
-    >>> cout = camille.output.bazefetcher('<root-directory>')
+    >>> cout = camille.output.Bazefetcher('<root-directory>')
     >>> cout(series, 'tag', overwrite = True)
     >>> end_date = datetime.datetime(2018, 1, 1, 18, tzinfo=pytz.utc)
     >>> ts = cin('tag', start_date, end_date)
@@ -159,18 +138,44 @@ def bazefetcher(root):
     2018-01-01 16:00:00+00:00    88
     2018-01-01 17:00:00+00:00    99
     Name: value, dtype: int64
-
     """
-    if not os.path.isdir(root):
-        raise ValueError('{} is not a directory'.format(root))
 
-    def bazefetcher_internal(
-            series, tag=None, start=None, end=None, overwrite=False):
+    def __init__(self, root, tzinfo=pytz.utc):
+
+        if not os.path.isdir(root):
+            raise ValueError('{} is not a directory'.format(root))
+
+        if not isinstance(tzinfo, datetime.tzinfo):
+            raise ValueError('tzinfo must be instance of datetime.tzinfo')
+
+        self.root = root
+        self.tzinfo = tzinfo
+
+    def __call__(self,
+                 series,
+                 tag,
+                 start=datetime.datetime(1677, 9, 22, tzinfo=pytz.utc),
+                 end=datetime.datetime(2262, 4, 11, tzinfo=pytz.utc),
+                 overwrite=False):
         """
-        See Also
-        --------
-        bazefetcher
+        Parameters
+        ----------
+        series : pandas.Series
+            Time series to write. The time series index must be timezone
+            aware
+        tag : str
+            The tag of the series to read
+        start : datetime.datetime
+            The start time of the data to be read. Must be timezone aware
+        end : datetime.datetime
+            The end time of the data to be read. Must be timezone aware
+        overwrite : bool, optional
+            True - existing data, which overlaps with the data
+            to be written, is deleted.
+            False - raise a ValueError on overwrite attempt.
+            Default is False
         """
+
         if tag is None:
             raise ValueError('tag must be specified')
 
@@ -187,7 +192,7 @@ def bazefetcher(root):
         series = series[start:end-eps]
 
         for s, e in _daterange( start, end ):
-            tag_path = _generate_tag_location( root,
+            tag_path = _generate_tag_location( self.root,
                                                tag,
                                                s,
                                                e,
@@ -211,5 +216,3 @@ def bazefetcher(root):
 
             ts = pd.DataFrame( { 't':ts.index, 'v':ts.values } )
             ts.to_json(tag_path, compression='gzip', orient='records' )
-
-    return bazefetcher_internal
