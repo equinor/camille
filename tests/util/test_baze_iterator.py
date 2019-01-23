@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-from camille.source import bazefetcher
-from camille.util import BazeIter
+from camille.source import Bazefetcher
 from datetime import datetime, timedelta
 from math import pi
 from pytz import utc
@@ -9,7 +8,7 @@ import pandas as pd
 import numpy as np
 
 
-baze = bazefetcher('tests/test_data/baze')
+baze = Bazefetcher('tests/test_data/baze')
 sin_tag = 'Sin-T60s-SR01hz'
 cos_tag = 'Cos-T60s-SR01hz'
 
@@ -36,13 +35,13 @@ def cos(t0=t1, tn=t4): return _cos[t0:tn - eps]
 
 
 def test_BazeIter():
-    for data, s, e in BazeIter(baze, sin_tag, t1, t2):
+    for data, s, e in baze.create_iterator(sin_tag, t1, t2):
         assert len(data) == 8640
         pd.testing.assert_series_equal(data, sin(s, e))
 
 
 def test_BazeIter_tag_list():
-    for data, s, e in BazeIter(baze, [sin_tag, cos_tag], t1, t2):
+    for data, s, e in baze.create_iterator([sin_tag, cos_tag], t1, t2):
         assert len(data[sin_tag]) == 8640
         pd.testing.assert_series_equal(data[sin_tag], sin(s, e))
         pd.testing.assert_series_equal(data[cos_tag], cos(s, e))
@@ -50,20 +49,20 @@ def test_BazeIter_tag_list():
 
 def test_left_padding():
     padding = timedelta(hours=1)
-    for data, s, e in BazeIter(baze, sin_tag, t2, t3, padding=padding):
+    for data, s, e in baze.create_iterator(sin_tag, t2, t3, padding=padding):
         assert len(data) == 9000
         pd.testing.assert_series_equal(data, sin(s - padding, e))
 
 
 def test_right_padding():
     padding = timedelta(hours=1)
-    for data, s, e in BazeIter(baze, sin_tag, t2, t3, padding=padding, leftpad=False, rightpad=True):
+    for data, s, e in baze.create_iterator(sin_tag, t2, t3, padding=padding, leftpad=False, rightpad=True):
         assert len(data) == 9000
         pd.testing.assert_series_equal(data, sin(s, e + padding))
 
 
 def test_non_one_day_interval():
-    for ind, (data, s, e) in enumerate(BazeIter(baze, sin_tag, t1, t4, timedelta(3))):
+    for ind, (data, s, e) in enumerate(baze.create_iterator(sin_tag, t1, t4, timedelta(3))):
         assert s == t1
         assert e == t4
         assert len(data) == day_data_length * 3
@@ -71,7 +70,7 @@ def test_non_one_day_interval():
 
 
 def test_interval_bigger_than_range():
-    for ind, (data, s, e) in enumerate(BazeIter(baze, sin_tag, t1, t2, timedelta(5))):
+    for ind, (data, s, e) in enumerate(baze.create_iterator(sin_tag, t1, t2, timedelta(5))):
         assert s == t1
         assert e == t2
         assert len(data) == day_data_length
@@ -81,7 +80,7 @@ def test_interval_bigger_than_range():
 def test_non_midnight_date():
     t1 = datetime(2030, 1, 1, 14, tzinfo=utc)
     t2 = datetime(2030, 1, 2, 11, tzinfo=utc)
-    for data, s, e in BazeIter(baze, sin_tag, t1, t2, timedelta(hours=1)):
+    for data, s, e in baze.create_iterator(sin_tag, t1, t2, timedelta(hours=1)):
         assert len(data) == 360
         pd.testing.assert_series_equal(data, sin(s, e))
 
@@ -90,7 +89,7 @@ def test_interval_not_fitting_range():
     exp_days = [2, 1]
     s_dates = [t1, t3]
     e_dates = [t3, t4]
-    for ind, (data, s, e) in enumerate(BazeIter(baze, sin_tag, t1, t4, timedelta(2))):
+    for ind, (data, s, e) in enumerate(baze.create_iterator(sin_tag, t1, t4, timedelta(2))):
         assert  s == s_dates[ind]
         assert  e == e_dates[ind]
         assert len(data) == day_data_length * exp_days[ind]
@@ -99,12 +98,35 @@ def test_interval_not_fitting_range():
 
 def test_pass_additional_kwarg():
     d = {sin_tag : {'snap' : 'both'}}
-    for data, _, _ in BazeIter(baze, sin_tag, t2, t3, tag_kwargs=d):
+    for data, _, _ in baze.create_iterator(sin_tag, t2, t3, tag_kwargs=d):
         assert len(data) == 8641
 
 
 def test_pass_additional_kwarg_list():
     d = {sin_tag: {'snap': 'both'}}
-    for data, _, _ in BazeIter(baze, [sin_tag, cos_tag], t2, t3, tag_kwargs=d):
+    for data, _, _ in baze.create_iterator([sin_tag, cos_tag], t2, t3, tag_kwargs=d):
         assert len(data[cos_tag]) == 8640
         assert len(data[sin_tag]) == 8641
+
+
+def test_no_time_boundaries():
+    t_end = datetime(2030, 1, 5, tzinfo=utc)
+    s_dates = [t1, t3]
+    e_dates = [t3, t_end]
+    for ind, (data, s, e) in enumerate(baze.create_iterator(sin_tag, interval=timedelta(2))):
+        assert  s == s_dates[ind]
+        assert  e == e_dates[ind]
+        assert len(data) == day_data_length * 2
+    assert ind == 1
+
+
+def test_no_time_boundaries_multiple_tags():
+    t_end = datetime(2030, 1, 5, tzinfo=utc)
+    s_dates = [t1, t3]
+    e_dates = [t3, t_end]
+    for ind, (data, s, e) in enumerate(baze.create_iterator([sin_tag, cos_tag], interval=timedelta(2))):
+        assert  s == s_dates[ind]
+        assert  e == e_dates[ind]
+        assert len(data[sin_tag]) == day_data_length * 2
+        assert len(data[cos_tag]) == day_data_length * 2
+    assert ind == 1

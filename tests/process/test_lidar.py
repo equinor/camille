@@ -37,7 +37,7 @@ def test_lidar(windiris_root):
     print("Parameters: dist={}, start_date={}, end_date={}"
         .format(dist, start_date, end_date))
 
-    cin = camille.source.bazefetcher('tests/test_data/processed')
+    cin = camille.source.Bazefetcher('tests/test_data/processed')
     ref = cin('inst1-horiz-windspeed-{}m'.format(dist), start_date, end_date)
 
     wiris = camille.source.windiris(windiris_root)
@@ -54,7 +54,7 @@ def test_lidar_extra_columns_share_coeff(windiris_root):
     end = datetime(2030, 1, 1, 0, 5, tzinfo=pytz.utc)
     extra_columns = ['shear_coeff']
 
-    cin = camille.source.bazefetcher('tests/test_data/processed')
+    cin = camille.source.Bazefetcher('tests/test_data/processed')
     ref = pd.DataFrame({
         'hws': cin('inst1-horiz-windspeed-{}m'.format(dist), start, end),
         'shear_coeff': cin('inst1-shear-coeff-{}m'.format(dist), start, end),
@@ -81,7 +81,7 @@ def test_lidar_all_extra_columns(windiris_root):
         'time0', 'time1', 'time2', 'time3',
     ]
 
-    cin = camille.source.bazefetcher('tests/test_data/processed')
+    cin = camille.source.Bazefetcher('tests/test_data/processed')
     ref = pd.DataFrame({
         'hws': cin('inst1-horiz-windspeed-{}m'.format(dist), start, end),
         **{

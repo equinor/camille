@@ -13,7 +13,7 @@ Available functions
 * :func:`~camille.output.bazefetcher`
 """
 
-from .bazefetcher import bazefetcher
+from .bazefetcher import Bazefetcher
 
 __all__ = [
     'bazefetcher'
