@@ -22,8 +22,10 @@ class BazeIter(abc.Iterable, abc.Sized):
     Returns
     -------
 
-    data : list of pandas.Series
-        The series gathered from the baze-function for each iteration.
+    data : pandas.Series or dict of pandas.Series
+        The series gathered from the baze-function for each iteration. If a list
+        of tags is provided a dict is returned mapping tags to corresponding
+        series.
         Includes padding
     start : list of datetime.datetime
         The start dates for all iterations. Does not include padding
