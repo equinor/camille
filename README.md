@@ -20,8 +20,8 @@ import camille
 import datetime
 import pytz
 
-bazefetcher_source = camille.source.bazefetcher('<bazefetcher_root_dir>')
-bazefetcher_out = camille.output.bazefetcher('<bazefetcher_root_dir>')
+bazefetcher_source = camille.source.Bazefetcher('<bazefetcher_root_dir>')
+bazefetcher_out = camille.output.Bazefetcher('<bazefetcher_root_dir>')
 
 begin = datetime.datetime(2017, 11, 1, tzinfo=pytz.utc )
 end = datetime.datetime(2017, 11, 3, tzinfo=pytz.utc )
