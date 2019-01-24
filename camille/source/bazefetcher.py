@@ -83,6 +83,16 @@ def _get_files(src_dirs, tag, fn_regex, date_pred):
     return files
 
 
+def _get_fn_regex(tag):
+    return re.compile(tag + fn_tail_pattern)
+
+
+def _get_files_between_start_and_end(src_dirs, tag, start_date, end_date):
+    return _get_files(src_dirs, tag, _get_fn_regex(tag),
+                       lambda fn : _fn_start_date(fn) < end_date
+                                   and start_date < _fn_end_date(fn))
+
+
 def _extend_bwd(start_date, df, src_dirs, tag, fn_regex, tzinfo):
     """
     Extends the range to include the last sample before or at the same time
@@ -94,7 +104,7 @@ def _extend_bwd(start_date, df, src_dirs, tag, fn_regex, tzinfo):
         return df, start_date
 
     files = _get_files(src_dirs, tag, fn_regex,
-                       lambda fn: _fn_end_date(fn) < start_date)
+                       lambda fn: _fn_end_date(fn) <= start_date)
 
     while True:
         if not files: break
@@ -128,7 +138,7 @@ def _extend_fwd(end_date, df, src_dirs, tag, fn_regex, tzinfo):
         return df, end_date + datetime.timedelta(microseconds=1)
 
     files = _get_files(src_dirs, tag, fn_regex,
-                       lambda fn: _fn_start_date(fn) > end_date)
+                       lambda fn: _fn_start_date(fn) >= end_date)
 
     while True:
         if not files: break
@@ -225,16 +235,14 @@ class Bazefetcher:
         if not start_date <= end_date:
             raise ValueError('start_date must be earlier than end_date')
 
-        fn_regex = re.compile(tag + fn_tail_pattern)
-
-        files = _get_files(self.src_dirs, tag, fn_regex,
-                           lambda fn : _fn_start_date(fn) <= end_date
-                                       and start_date <= _fn_end_date(fn))
+        files = _get_files_between_start_and_end(
+            self.src_dirs, tag, start_date, end_date)
 
         L = [_safe_read(fn) for fn in files]
         df = pd.concat(L, sort=True) if len(L) > 0 else pd.DataFrame()
 
         _tidy_frame(df, self.tzinfo)
+        fn_regex = _get_fn_regex(tag)
 
         if snap == 'left' or snap == 'both':
             df, start_date = _extend_bwd(start_date,
@@ -260,6 +268,7 @@ class Bazefetcher:
             pass
 
         return ts
+
 
     def create_iterator(self, tags, start=None, stop=None,
                         interval=datetime.timedelta(1),
