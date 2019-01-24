@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from camille.source import Bazefetcher
+from camille.source.bazefetcher import _get_files_between_start_and_end
 from datetime import datetime, timedelta
 from math import pi
 from pytz import utc
@@ -128,10 +129,13 @@ def test_snap_backward_within_file():
     assert ( inst4.index == [ datetime(2030, 1, 1, tzinfo=utc) ] ).all()
     assert ( inst4 == [ 1 ] ).all()
 
-def test_snap_backward_outside_file():
+snap_backward_outside_file_data = [(t1_5, t1_5_1), (t1_4, t1_4_3)]
+
+@pytest.mark.parametrize("t0,t1", snap_backward_outside_file_data)
+def test_snap_backward_outside_file(t0, t1):
     inst4 = authored('installation-04-status',
-                     t1_5,
-                     t1_5_1,
+                     t0,
+                     t1,
                      snap='left')
 
     assert ( inst4.index == [ datetime(2030, 1, 3, tzinfo=utc) ] ).all()
@@ -150,10 +154,13 @@ def test_snap_forward_within_file():
            ).all()
     assert ( inst4 == [ 0, 1 ] ).all()
 
-def test_snap_forward_outside_file():
+snap_forward_outside_file_data = [(t12_31_22, t12_31_23), (t12_31_22, t1_1)]
+
+@pytest.mark.parametrize("t0,t1", snap_forward_outside_file_data)
+def test_snap_forward_outside_file(t0, t1):
     inst4 = authored('installation-04-status',
-                     t12_31_22,
-                     t12_31_23,
+                     t0,
+                     t1,
                      snap='right')
 
     assert ( inst4.index == [ datetime(2030, 1, 1, tzinfo=utc) ] ).all()
@@ -215,3 +222,10 @@ def test_no_time_boundaries():
     assert sin_b.index[0] == t1_1
     assert sin_b.index[-1] < t1_5
     assert (t1_1 - sin_b.index[-1]).to_pytimedelta() < timedelta(seconds=20)
+
+
+def test_no_unnecessary_files_read():
+    #testing private method to cover the case where unnecessary files were read
+    files = _get_files_between_start_and_end(
+        authored.src_dirs, 'installation-04-status', t1_2, t1_3)
+    assert len(files) == 1
