@@ -1,5 +1,5 @@
 import pandas as pd
-from scipy.signal import lfilter, butter
+from scipy.signal import filtfilt, butter
 
 def process(signal, sampling_rate, cutoff_freq, order=5):
     """Process low pass
@@ -28,5 +28,5 @@ def process(signal, sampling_rate, cutoff_freq, order=5):
     nyq_freq = 0.5 * sampling_rate
     normal_cutoff = cutoff_freq / nyq_freq
     b, a = butter(order, normal_cutoff, btype='low', analog=False)
-    lps = lfilter(b, a, signal.values)
+    lps = filtfilt(b, a, signal.values)
     return pd.Series(lps, index=signal.index)
