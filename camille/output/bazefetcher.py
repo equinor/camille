@@ -154,8 +154,8 @@ class Bazefetcher:
     def __call__(self,
                  series,
                  tag,
-                 start=datetime.datetime(1677, 9, 22, tzinfo=pytz.utc),
-                 end=datetime.datetime(2262, 4, 11, tzinfo=pytz.utc),
+                 start=None,
+                 end=None,
                  overwrite=False):
         """
         Parameters
