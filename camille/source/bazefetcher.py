@@ -270,11 +270,11 @@ class Bazefetcher:
         return ts
 
 
-    def create_iterator(self, tags, start=None, stop=None,
+    def create_iterator(self, tags, start=None, end=None,
                         interval=datetime.timedelta(1),
                         padding=datetime.timedelta(0), leftpad=True,
                         rightpad=False, tag_kwargs=None):
-        return BazeIter(self, tags, start=start, stop=stop, interval=interval,
+        return BazeIter(self, tags, start=start, end=end, interval=interval,
                         padding=padding, leftpad=leftpad, rightpad=rightpad,
                         tag_kwargs=tag_kwargs)
 
@@ -328,7 +328,7 @@ class BazeIter(abc.Iterable, abc.Sized):
 
     """
 
-    def __init__(self, baze, tags, start=None, stop=None,
+    def __init__(self, baze, tags, start=None, end=None,
                  interval=datetime.timedelta(1), padding=datetime.timedelta(0),
                  leftpad=True, rightpad=False, tag_kwargs=None):
         """
@@ -342,8 +342,8 @@ class BazeIter(abc.Iterable, abc.Sized):
         start : datetime.datetime
             The start time of the data to be read (Inclusive)
             Must be timezone aware
-        stop : datetime.datetime
-            The start time of the data to be read (Exclusive)
+        end : datetime.datetime
+            The end time of the data to be read (Exclusive)
             Must be timezone aware
         interval : datetime.timedelta
             The interval of the iterations. Must be days. Defaults to 1
@@ -360,8 +360,8 @@ class BazeIter(abc.Iterable, abc.Sized):
 
         if start is None:
             start = _find_start_time(baze, tags)
-        if stop is None:
-            stop = _find_stop_time(baze, tags)
+        if end is None:
+            end = _find_stop_time(baze, tags)
 
         self.baze = baze
         self.tags = tags
@@ -370,8 +370,8 @@ class BazeIter(abc.Iterable, abc.Sized):
         self.leftpad = leftpad
         self.rightpad = rightpad
         self.start = start
-        self.stop = stop
-        periods = ceil((stop - start) / interval)
+        self.stop = end
+        periods = ceil((end - start) / interval)
         self.beg = pd.date_range(start=start, periods=periods, freq=interval)
         self.end = self.beg + interval
         self.it = list(zip(self.beg, self.end))
