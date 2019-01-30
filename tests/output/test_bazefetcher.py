@@ -35,6 +35,14 @@ def assert_correct_raw_values(expected_series, basedir, file_date, tag="test"):
     assert np.allclose(df.v.values, expected_series.values)
 
 
+def get_files_count(basedir, tag="test"):
+    path = os.path.join(str(basedir), tag)
+    if (os.path.isdir(path)):
+        return len(os.listdir(path))
+    else:
+        return 0
+
+
 def assert_files_list(basedir, start_date, days, tag="test"):
     """
     Asserts file list output is as expected and contains only all
@@ -163,6 +171,25 @@ def test_no_dates_provided(tmpdir):
     assert_files_list(tmpdir, t0.astimezone(utc), 2)
     expected_times = pd.date_range(t0, t1, freq="H", closed="left")
     assert_correct_index(expected_times, tmpdir, t0, t1)
+
+
+def test_writing_empty_data(tmpdir):
+    t0 = get_test_date(6)
+    t1 = get_test_date(7)
+    ts = pd.Series()
+
+    files_before = get_files_count(tmpdir)
+    generate_output(tmpdir, ts, t0, t1)
+    files_after = get_files_count(tmpdir)
+    assert files_before == files_after
+
+
+def test_writing_empty_data_no_daterange(tmpdir):
+    ts = pd.Series()
+    files_before = get_files_count(tmpdir)
+    generate_output(tmpdir, ts)
+    files_after = get_files_count(tmpdir)
+    assert files_before == files_after
 
 
 def test_multiple_writes_to_same_file(tmpdir):
