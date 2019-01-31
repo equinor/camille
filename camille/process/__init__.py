@@ -11,6 +11,8 @@ Available processors
 * :func:`~camille.process.fft`
 * :func:`~camille.process.lidar`
 * :func:`~camille.process.low_pass`
+* :func:`~camille.process.high_pass`
+* :func:`~camille.process.band_pass`
 * :func:`~camille.process.mooring_fatigue`
 """
 
@@ -18,7 +20,9 @@ from .atm_stb import process as atm_stb
 from .delta_temp import process as delta_temp
 from .fft import process as fft
 from .lidar import process as lidar
-from .low_pass import process as low_pass
+from .pass_filter import low_pass
+from .pass_filter import high_pass
+from .pass_filter import band_pass
 from .mooring_fatigue import process as mooring_fatigue
 
 __all__ = [
@@ -27,5 +31,7 @@ __all__ = [
     'fft',
     'lidar',
     'low_pass',
+    'high_pass',
+    'band_pass',
     'mooring_fatigue',
 ]
