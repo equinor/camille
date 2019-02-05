@@ -6,18 +6,17 @@ import pytest
 
 wi = windiris('tests/test_data/windiris')
 
-def test_load_all_data():
-    s = datetime(2017, 12, 17, tzinfo=utc)
-    e = datetime(2018, 10, 23, tzinfo=utc)
+all_radial_windspeed = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                        2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+                        3, 3, 3, 3, 3, 3]
+db_start_datetime = datetime(2017, 12, 17, tzinfo=utc)
+db_end_datetime = datetime(2018, 10, 23, tzinfo=utc)
 
-    df = wi('inst2', s, e)
+def test_load_all_data():
+    df = wi('inst2', db_start_datetime, db_end_datetime)
 
     assert df.shape[0] == 27
-    assert (
-                df.radial_windspeed == [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                                         2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-                                         3, 3, 3, 3, 3, 3 ]
-           ).all()
+    assert (df.radial_windspeed == all_radial_windspeed).all()
 
 
 def test_load_one_day():
@@ -138,3 +137,18 @@ def test_no_time_zone():
     with pytest.raises(ValueError) as exc:
         wi('inst2', ntz_date, tz_date)
     assert 'timezone aware' in str(exc)
+
+def test_load_all_data_by_no_date():
+    df_no_dates = wi('inst2')
+
+    assert (df_no_dates.radial_windspeed == all_radial_windspeed).all()
+
+def test_load_data_without_start_date():
+    df_no_start_date = wi('inst2', end_date=db_end_datetime)
+
+    assert (df_no_start_date.radial_windspeed == all_radial_windspeed).all()
+
+def test_load_data_without_end_date():
+    df_no_end_date = wi('inst2', start_date=db_start_datetime)
+
+    assert (df_no_end_date.radial_windspeed == all_radial_windspeed).all()

@@ -5,6 +5,7 @@ from math import radians
 import re
 import pytz
 
+
 def _to_string(x):
     x = re.sub('[^A-Za-z0-9,.]', '', str(x))
     return '(' + x + ')'
@@ -18,25 +19,31 @@ def _sqlite(start_date,
             los_id=None,
             distance=None,
             status=None):
+
+    query_params = []
+    if start_date is not None:
+        query_params.append(' Timestamp >= "{}" '
+                            .format(str(start_date.astimezone(pytz.utc)
+                                        .replace(tzinfo=None))))
+    if end_date is not None:
+        query_params.append(' Timestamp < "{}" '
+                            .format(str(end_date.astimezone(pytz.utc)
+                                        .replace(tzinfo=None))))
+    if los_id is not None:
+        query_params.append(' "LOS Index" IN {} '.format(_to_string(los_id)))
+    if distance is not None:
+        query_params.append(' Distance IN {} '.format(_to_string(distance)))
+    if status is not None:
+        query_params.append(' "RWS Status" IN {} '.format(_to_string(status)))
+
     query = (
-        'SELECT * FROM ' + installation #nosec
-        + ' WHERE Timestamp >= :start AND Timestamp < :end'
-        + ( '' if los_id is None
-               else ' AND "LOS Index" IN {}'.format(_to_string(los_id)) )
-        + ( '' if distance is None
-               else ' AND Distance IN {}'.format(_to_string(distance)) )
-        + ( '' if status is None
-               else ' AND "RWS Status" IN {}'.format(_to_string(status)) )
+        'SELECT * FROM ' + _to_string(installation) #nosec
+        + ('' if len(query_params) == 0
+           else ' WHERE ' + 'AND'.join(query_params))
         + ';'
     )
 
     df = pd.read_sql_query(query, connection,
-                           params={
-                                'start': str(start_date.astimezone(pytz.utc)
-                                             .replace(tzinfo=None)),
-                                'end': str(end_date.astimezone(pytz.utc)
-                                           .replace(tzinfo=None))
-                           },
                            index_col='Timestamp',
                            parse_dates={
                                 'Timestamp': {'utc': True}
@@ -107,14 +114,11 @@ def windiris(root, tzinfo=pytz.utc):
         raise ValueError('{} is not a directory'.format(root))
 
     def windiris_internal(installation,
-                          start_date,
-                          end_date,
+                          start_date=None,
+                          end_date=None,
                           los_id=None,
                           distance=None,
                           status=None):
-
-        if start_date.tzinfo is None or end_date.tzinfo is None:
-            raise ValueError('dates must be timezone aware')
 
         f = os.path.join(root, installation, installation + '_rtd.db' )
 
@@ -122,6 +126,10 @@ def windiris(root, tzinfo=pytz.utc):
             raise ValueError('Installation {} not found'.format(installation))
 
         conn = sqlite3.connect(f)
+
+        if (start_date is not None and start_date.tzinfo is None) or \
+                (end_date is not None and end_date.tzinfo is None):
+            raise ValueError('dates must be timezone aware')
 
         return _sqlite(start_date,
                        end_date,
