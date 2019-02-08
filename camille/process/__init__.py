@@ -14,6 +14,7 @@ Available processors
 * :func:`~camille.process.high_pass`
 * :func:`~camille.process.band_pass`
 * :func:`~camille.process.mooring_fatigue`
+* :func:`~camille.process.rolling_median`
 """
 
 from .atm_stb import process as atm_stb
@@ -24,6 +25,7 @@ from .pass_filter import low_pass
 from .pass_filter import high_pass
 from .pass_filter import band_pass
 from .mooring_fatigue import process as mooring_fatigue
+from .rolling_median import process as rolling_median
 
 __all__ = [
     'atm_stb',
@@ -34,4 +36,5 @@ __all__ = [
     'high_pass',
     'band_pass',
     'mooring_fatigue',
+    'rolling_median'
 ]
