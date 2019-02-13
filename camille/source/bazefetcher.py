@@ -84,7 +84,7 @@ def _get_files(src_dirs, tag, fn_regex, date_pred):
 
 
 def _get_fn_regex(tag):
-    return re.compile(tag + fn_tail_pattern)
+    return re.compile(re.escape(tag) + fn_tail_pattern)
 
 
 def _get_files_between_start_and_end(src_dirs, tag, start_date, end_date):

@@ -11,6 +11,7 @@ import pytest
 
 authored = Bazefetcher('tests/test_data/authored')
 baze = Bazefetcher('tests/test_data/baze')
+non_standard = Bazefetcher('tests/test_data/non_standard_names')
 
 t12_31_22 = datetime(2029, 12, 31, 22, tzinfo=utc)
 t12_31_23 = datetime(2029, 12, 31, 23, tzinfo=utc)
@@ -225,7 +226,27 @@ def test_no_time_boundaries():
 
 
 def test_no_unnecessary_files_read():
-    #testing private method to cover the case where unnecessary files were read
+    #testing private method to cover the case where unnecessary files were readlllll
     files = _get_files_between_start_and_end(
         authored.src_dirs, 'installation-04-status', t1_2, t1_3)
     assert len(files) == 1
+
+
+def test_load_tmp_file():
+    sin_data = non_standard('tmp-file')
+    sin_data_missing_day = non_standard('tmp-file', t1_2, t1_3)
+    assert len(sin_data) == (6 * 60 * 24 * 3)  # 3 days
+    assert len(sin_data_missing_day) == 0
+
+
+def test_load_err_file():
+    sin_data = non_standard('err-file')
+    sin_data_missing_day = non_standard('err-file', t1_2, t1_3)
+    assert len(sin_data) == (6 * 60 * 24 * 3)  # 3 days
+    assert len(sin_data_missing_day) == 0
+
+
+def test_load_special_regex_file():
+    sin_data = non_standard('tag-with+plus-sign')
+    assert len(sin_data) == 34560  # 4 days
+    pd.testing.assert_series_equal(sin_data, sin(t1_1, t1_5))
