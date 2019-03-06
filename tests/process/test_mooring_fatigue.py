@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import numpy as np
 import pandas as pd
+import pytest
 
 from camille import process
 from camille.process.mooring_fatigue import _calculate_stress
@@ -54,6 +55,16 @@ def test_index_set_to_window_start():
 def test_calc_damage():
     damage = _calc_damage(refcase)
     assert np.allclose( damage, 1.34471920175778e-010 )
+
+
+def test_floating_point_roundoff_causing_unexpected_zero():
+    try:
+        _calc_damage(np.array([22.169702635236565, 22.16970263523657,
+                               22.169702635236565, 22.16970263523657],
+                               dtype=np.float64))
+    except ValueError:
+        pytest.fail("Exception raised, possibly caused by floating point "
+                    "roundoff creating unexpected zero value")
 
 
 def test_nan():

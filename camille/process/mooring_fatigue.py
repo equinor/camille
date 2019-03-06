@@ -60,9 +60,10 @@ def _calc_damage(data):
     stress_ranges = []
     cycles = []
     for low, high, mult in rainflow.extract_cycles(data, True, True):
-        cycles.append(mult)
         amplitude = high - 0.5 * (high + low)
-        if amplitude > 0: stress_ranges.append( 2*amplitude )
+        if amplitude > 0:
+            cycles.append(mult)
+            stress_ranges.append( 2*amplitude )
 
     N = sn_curve(stress_ranges, logA=math.log10(6e10), m=3, t=0, tref=25, k=0)
     damage = sum(sorted(cycles/N))
