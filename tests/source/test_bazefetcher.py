@@ -250,3 +250,8 @@ def test_load_special_regex_file():
     sin_data = non_standard('tag-with+plus-sign')
     assert len(sin_data) == 34560  # 4 days
     pd.testing.assert_series_equal(sin_data, sin(t1_1, t1_5))
+
+
+def test_load_bad_format_file():
+    df = baze('bad_format')
+    assert df.empty
