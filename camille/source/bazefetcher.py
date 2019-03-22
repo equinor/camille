@@ -42,7 +42,8 @@ def _safe_read(fn, **kwargs):
 
 
 def _tidy_frame(df, tzinfo):
-    if df is None or df.empty:
+    if df is None or df.empty or 't' not in df.columns:
+        df.drop(df.index, inplace=True)
         df.insert(0, 't', [])
         df.insert(1, 'v', [])
     df.rename(columns={
