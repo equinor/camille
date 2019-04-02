@@ -1,4 +1,4 @@
-from math import cos, sin, log, sqrt, radians
+from math import cos, sin, log, sqrt, radians, atan2
 
 import pandas as pd
 import numpy as np
@@ -60,7 +60,7 @@ def planar_windspeed(rws_a, rws_b, pitch, roll, azm, zn):
                      sin(zn) * sin(azm) * sin(pitch) * cos(roll))
     x = (rws_a + rws_b) / x_divisor
     y = (rws_a - rws_b) / (2 * sin(zn) * cos(azm) * cos(roll))
-    return sqrt(x ** 2 + y ** 2)
+    return x, y
 
 
 def shear_coefficient(ws_upr, ws_lwr, hgt_upr, hgt_lwr):
@@ -114,8 +114,56 @@ def extrapolate_windspeed(hgt, shear_coeff, ref_windspeed, ref_hgt):
     return ref_windspeed * pow(hgt / ref_hgt, shear_coeff)
 
 
-def horiz_windspeed(L, dist, hub_hgt, lidar_hgt, azimuths, zeniths):
-    """Horizontal wind speed
+def vertical_wind_veer(upper_dir, lower_dir, upper_height, lower_height):
+    """Vertical wind veer
+
+    Calculate vertical wind veer from the horizontal directions
+
+    Parameters
+    ----------
+    upper_dir : float
+        Target height
+    lower_dir : float
+        Shear coefficient
+    upper_height : float
+        Reference wind speed
+    lower_height : float
+        Reference height
+
+    Returns
+    -------
+    float
+        Vertical wind veer
+    """
+    return (upper_dir - lower_dir) / (upper_height - lower_height)
+
+
+def extrapolate_wind_direction(hgt, veer, ref_wind_direction, ref_hgt):
+    """Extrapolate wind direction
+
+    Extrapolate wind direction using the linear law and veer.
+
+    Parameters
+    ----------
+    hgt : float
+        Target height
+    veer : float
+        Vertical wind veer
+    ref_wind_direction : float
+        Reference wind direction
+    ref_hgt : float
+        Reference height
+
+    Returns
+    -------
+    float
+        Horizontal wind direction at target height
+    """
+    return ref_wind_direction + veer * (hgt - ref_hgt)
+
+
+def horiz_wind(L, dist, hub_hgt, lidar_hgt, azimuths, zeniths):
+    """Horizontal wind speed and direction
 
     Parameters
     ----------
@@ -137,6 +185,8 @@ def horiz_windspeed(L, dist, hub_hgt, lidar_hgt, azimuths, zeniths):
     -------
     float
         Wind speed at nacelle hub height
+    float
+        Wind direction at nacelle hub height
 
     """
     sensors = L.index.tolist()
@@ -159,14 +209,26 @@ def horiz_windspeed(L, dist, hub_hgt, lidar_hgt, azimuths, zeniths):
     ws_lwr = planar_windspeed(
         rws[2], rws[3], pitch_lwr, roll_lwr, azimuths[2], zeniths[2])
 
-    shear_coeff = shear_coefficient(ws_upr, ws_lwr, hgt_upr, hgt_lwr)
-    hws = extrapolate_windspeed(hub_hgt, shear_coeff, ws_lwr, hgt_lwr)
-    return hws, {
+    hws_upr = sqrt(ws_upr[0] ** 2 + ws_upr[1] ** 2)
+    hws_lwr = sqrt(ws_lwr[0] ** 2 + ws_lwr[1] ** 2)
+
+    shear_coeff = shear_coefficient(hws_upr, hws_lwr, hgt_upr, hgt_lwr)
+    hws = extrapolate_windspeed(hub_hgt, shear_coeff, hws_lwr, hgt_lwr)
+
+    dir_upr = atan2(ws_upr[1], ws_upr[0])
+    dir_lwr = atan2(ws_lwr[1], ws_lwr[0])
+
+    veer = vertical_wind_veer(dir_upr, dir_lwr, hgt_upr, hgt_lwr)
+
+    hwd = extrapolate_wind_direction(hub_hgt, veer, dir_upr, hgt_upr)
+
+    return hws, hwd, {
         'shear_coeff': shear_coeff,
+        'veer': veer,
         **{'rws{}'.format(s): rws[s] for s in sensors},
         **{'beam_hgt{}'.format(s): beam_hgts[s] for s in sensors},
-        'planar_ws_upr': ws_upr,
-        'planar_ws_lwr': ws_lwr,
+        'planar_ws_upr': hws_upr,
+        'planar_ws_lwr': hws_lwr,
         **{'time{}'.format(s): L.loc[s].time for s in sensors},
     }
 
@@ -282,7 +344,8 @@ def process(
         extra_columns=None):
     """Process LiDAR
 
-    Reconstruct horizontal wind speeds from Wind Iris real-time data
+    Reconstruct horizontal wind speeds and directions from Wind Iris real-time
+    data
 
     Parameters
     ----------
@@ -308,6 +371,7 @@ def process(
         values computed by this processor. Available extra columns are:
 
         - :code:`shear_coeff` - Shear coefficient
+        - :code:`veer` - Veer
         - :code:`rws[0-3]` - radial wind speeds
         - :code:`beam_hgt[0-3]` - beam heights
         - :code:`planar_ws_(upr|lwr)` - planar wind speeds
@@ -333,7 +397,7 @@ def process(
     if df.index.name != 'time':
         raise ValueError('Index column must be named time')
 
-    out_columns = ['hws']
+    out_columns = ['hws', 'hwd']
     if extra_columns is not None:
         out_columns += list(extra_columns)
 
@@ -346,7 +410,7 @@ def process(
 
     for i, k in zip(range(len(df)), range(4, len(df) + 1)):
         """
-        We compute the horizontal windspeed using four LOS measurements. We
+        We compute the horizontal wind features using four LOS measurements. We
         therefor consider windows of size four.
         """
 
@@ -361,10 +425,10 @@ def process(
         win.set_index('los_id', inplace=True)
         win.sort_index(inplace=True)
 
-        hws0, extra = (
-            horiz_windspeed(win, dist, hub_hgt, lidar_hgt, azimuths, zeniths))
+        hws0, hwd, extra = (
+            horiz_wind(win, dist, hub_hgt, lidar_hgt, azimuths, zeniths))
 
-        row = [hws0]
+        row = [hws0, hwd]
         if extra_columns is not None:
             row += [extra[c] for c in extra_columns]
         hws.loc[time] = row

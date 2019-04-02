@@ -58,7 +58,7 @@ def test_lidar_extra_columns_share_coeff(windiris_root):
     ref = pd.DataFrame({
         'hws': cin('inst1-horiz-windspeed-{}m'.format(dist), start, end),
         'shear_coeff': cin('inst1-shear-coeff-{}m'.format(dist), start, end),
-    }, columns=['hws'] + extra_columns)
+    }, columns=['hws', 'hwd'] + extra_columns)
 
     wiris = camille.source.windiris(windiris_root)
     li = wiris('inst1', start, end, distance=dist)
@@ -88,7 +88,7 @@ def test_lidar_all_extra_columns(windiris_root):
             c: cin('inst1-{}-{}m'.format(c.replace('_', '-'), dist), start, end)
             for c in extra_columns
         },
-    }, columns=['hws'] + extra_columns)
+    }, columns=['hws', 'hwd'] + extra_columns)
     ref.time0 = pd.to_datetime(ref.time0, unit='ms', utc=True)
     ref.time1 = pd.to_datetime(ref.time1, unit='ms', utc=True)
     ref.time2 = pd.to_datetime(ref.time2, unit='ms', utc=True)
