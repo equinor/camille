@@ -11,10 +11,8 @@ Available functions
 """
 
 from .resample import resample
-from .sncurves import sn_curve
 
 __all__ = [
     'BazeIter',
     'resample',
-    'sn_curve',
 ]
