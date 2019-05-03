@@ -7,6 +7,8 @@ from camille import process
 from camille.process.mooring_fatigue import _calculate_stress
 from camille.process.mooring_fatigue import _calc_damage
 from camille.process.mooring_fatigue import _is_bad_data
+from camille.process.mooring_fatigue import sncurve
+import math
 
 refcase = [0.60727647, 0.14653493, 0.19643957, 0.56821631, 0.88833878, 0.29612997,
            0.59539649, 0.6996683,  0.10524973, 0.12334626, 0.68401331, 0.85985292,
@@ -35,10 +37,18 @@ mooring_fatigue_ref = [6.4859627078e-009, 3.5345447785e-009, 3.9938747139e-009,
                        7.9628828987e-009, 17.716393440e-009, 13.768516462e-009,
                        13.476337649e-009, 2.5509061348e-009]
 
+sn_curve = { 'logA': math.log10(6e10),
+             'm': 3,
+             't': 0,
+             'tref': 25,
+             'k': 0 }
 
 def test_process():
     series = pd.Series(data=refcase, name='bridle1')
-    res = process.mooring_fatigue(series, window_length=1, fs=5)
+    res = process.mooring_fatigue(series,
+                                  window_length=1,
+                                  fs=5,
+                                  sn_curve=sn_curve)
     assert np.allclose(res.values.T, mooring_fatigue_ref)
 
 
@@ -53,7 +63,7 @@ def test_index_set_to_window_start():
 
 
 def test_calc_damage():
-    damage = _calc_damage(refcase)
+    damage = _calc_damage(refcase, sn_curve)
     assert np.allclose( damage, 1.34471920175778e-010 )
 
 
@@ -61,7 +71,8 @@ def test_floating_point_roundoff_causing_unexpected_zero():
     try:
         _calc_damage(np.array([22.169702635236565, 22.16970263523657,
                                22.169702635236565, 22.16970263523657],
-                               dtype=np.float64))
+                               dtype=np.float64),
+                               sn_curve)
     except ValueError:
         pytest.fail("Exception raised, possibly caused by floating point "
                     "roundoff creating unexpected zero value")
@@ -102,7 +113,38 @@ def test_calculate_stress():
 def assert_index_set_to_window_start(
         series, window_length, fs, unprocessed_series_index):
     nsamples = len(series)
-    res = process.mooring_fatigue(series, window_length=window_length, fs=fs)
+    res = process.mooring_fatigue(series,
+                                  window_length=window_length,
+                                  fs=fs,
+                                  sn_curve=sn_curve)
     step = window_length * fs
     first_invalid = nsamples - (nsamples % step)
     assert (res.index == unprocessed_series_index[:first_invalid:step]).all()
+
+
+def test_scalar_params():
+    x = [12.73, 47.83, 41.05, 30.05, 24.58]
+    expected = [2.90847971e7, 5.48340227e5, 8.67384717e5,
+                2.21114804e6, 4.04022558e6]
+
+    result = sncurve( x,
+                      logA=np.log10(6e10),
+                      m=3, t=0,
+                      tref=25,
+                      k=0 )
+
+    assert np.allclose(result, expected)
+
+
+def test_array_params():
+    x = [22.49, 25.13, 4.83, 30.44]
+    expected = [3.63122134e9, 2.08467115e9, 7.94811873e12, 7.99423221e8]
+
+    result = sncurve(x,
+                     logA=[12.192,16.32],
+                     m=[3.0,5.0],
+                     k=0.05,
+                     tref=25,
+                     t=0)
+
+    assert np.allclose(result, expected)
