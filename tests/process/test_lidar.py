@@ -54,21 +54,21 @@ class lidar_simulator:
 
 
 class windfield_function:
-    def __init__(self, direction, ref_speed, shear_coeff=0.0):
+    def __init__(self, direction, ref_speed, shear=0.0):
         self.direction = direction
         self.ref_speed = ref_speed
-        self.shear_coeff = shear_coeff
+        self.shear = shear
 
     def __call__(self, pnt):
         hgt = pnt[2]
-        u = self.ref_speed * pow(hgt / hub_hgt, self.shear_coeff)
+        u = self.ref_speed * pow(hgt / hub_hgt, self.shear)
         return u, u * self.direction
 
     def __repr__(self):
         return 'windfield_function({}, {}, {})'.format(
             self.direction,
             self.ref_speed,
-            self.shear_coeff
+            self.shear
         )
 
 
@@ -103,10 +103,10 @@ angles = floats(min_value=-0.0872665, max_value=0.0872665)
 windfields = builds(windfield_function, directions, windspeeds)
 lidars = builds(lidar_simulator, angles, angles)
 
-shear_coeffs = floats(min_value=0.143 / 2, max_value=0.143 * 2)
+shears = floats(min_value=0.143 / 2, max_value=0.143 * 2)
 sheared_windfields = builds(
-    windfield_function, directions, windspeeds, shear_coeffs)
-# shear_coefficient is inaccurate with roll, could be addressed
+    windfield_function, directions, windspeeds, shears)
+# shear is inaccurate with roll, could be addressed
 flat_lidars = builds(lidar_simulator, angles)
 
 distances = integers(min_value=50, max_value=400)
@@ -128,12 +128,12 @@ def test_lidar(args):
         lidar_hgt=0,
         pitch_offset=0,
         roll_offset=0,
-        extra_columns=['shear_coeff'],
+        extra_columns=['shear'],
     )
 
     ref_speed, _ = windfield(np.array([dist, 0, hub_hgt]))
     for _, row in processed.iterrows():
-        assert row.shear_coeff == approx(0)
+        assert row.shear == approx(0)
         assert row.hws == approx(ref_speed)
 
 
@@ -148,11 +148,11 @@ def test_lidar_sheared_windfield(args):
         lidar_hgt=0,
         pitch_offset=0,
         roll_offset=0,
-        extra_columns=['shear_coeff'],
+        extra_columns=['shear'],
     )
 
     ref_speed, _ = windfield(np.array([dist, 0, hub_hgt]))
-    ref_shear = windfield.shear_coeff
+    ref_shear = windfield.shear
     for _, row in processed.iterrows():
-        assert row.shear_coeff == approx(ref_shear)
+        assert row.shear == approx(ref_shear)
         assert row.hws == approx(ref_speed)

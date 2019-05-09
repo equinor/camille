@@ -117,10 +117,10 @@ def planar_windspeed(rws_a, rws_b, pitch, roll, azm_a, azm_b, zn_a, zn_b):
     return sqrt(x ** 2 + y ** 2)
 
 
-def shear_coefficient(ws_upr, ws_lwr, hgt_upr, hgt_lwr):
-    """Shear Coefficient
+def shear(ws_upr, ws_lwr, hgt_upr, hgt_lwr):
+    """Shear
 
-    Calculate shear coefficient
+    Calculate shear
 
     Parameters
     ----------
@@ -136,7 +136,7 @@ def shear_coefficient(ws_upr, ws_lwr, hgt_upr, hgt_lwr):
     Returns
     -------
     float
-        Shear coefficient
+        Shear
 
     References
     ----------
@@ -146,7 +146,7 @@ def shear_coefficient(ws_upr, ws_lwr, hgt_upr, hgt_lwr):
     return log(ws_upr / ws_lwr) / log(hgt_upr / hgt_lwr)
 
 
-def extrapolate_windspeed(hgt, shear_coeff, ref_windspeed, ref_hgt):
+def extrapolate_windspeed(hgt, shr, ref_windspeed, ref_hgt):
     """Extrapolate windspeed
 
     Extrapolate windspeed using the wind profile power law [1]_.
@@ -155,8 +155,8 @@ def extrapolate_windspeed(hgt, shear_coeff, ref_windspeed, ref_hgt):
     ----------
     hgt : float
         Target height
-    shear_coeff : float
-        Shear coefficient
+    shr : float
+        Shear
     ref_windspeed : float
         Reference wind speed
     ref_hgt : float
@@ -172,7 +172,7 @@ def extrapolate_windspeed(hgt, shear_coeff, ref_windspeed, ref_hgt):
 
     .. [1] https://en.wikipedia.org/wiki/Wind_profile_power_law
     """
-    return ref_windspeed * pow(hgt / ref_hgt, shear_coeff)
+    return ref_windspeed * pow(hgt / ref_hgt, shr)
 
 
 def horiz_windspeed(L, dist, hub_hgt, lidar_hgt, azimuths, zeniths):
@@ -229,10 +229,10 @@ def horiz_windspeed(L, dist, hub_hgt, lidar_hgt, azimuths, zeniths):
         rws[2], rws[3], pitch_lwr, roll_lwr,
         azimuths[2], azimuths[3], zeniths[2], zeniths[3])
 
-    shear_coeff = shear_coefficient(ws_upr, ws_lwr, hgt_upr, hgt_lwr)
-    hws = extrapolate_windspeed(hub_hgt, shear_coeff, ws_lwr, hgt_lwr)
+    shr = shear(ws_upr, ws_lwr, hgt_upr, hgt_lwr)
+    hws = extrapolate_windspeed(hub_hgt, shr, ws_lwr, hgt_lwr)
     return hws, {
-        'shear_coeff': shear_coeff,
+        'shear': shr,
         **{'rws{}'.format(s): rws[s] for s in sensors},
         **{'beam_hgt{}'.format(s): beam_hgts[s] for s in sensors},
         'planar_ws_upr': ws_upr,
@@ -373,7 +373,7 @@ def process(
         Export extra data. Sometimes it can be useful to export intermediate
         values computed by this processor. Available extra columns are:
 
-        - :code:`shear_coeff` - Shear coefficient
+        - :code:`shear` - Shear
         - :code:`rws[0-3]` - radial wind speeds
         - :code:`beam_hgt[0-3]` - beam heights
         - :code:`planar_ws_(upr|lwr)` - planar wind speeds
