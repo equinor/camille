@@ -114,7 +114,7 @@ def planar_windspeed(rws_a, rws_b, pitch, roll, azm_a, azm_b, zn_a, zn_b):
     d = cos(roll) * cos(azm_b) * sin(zn_b) + sin(roll) * sin(zn_b) * sin(azm_b)
     x = (b * rws_b - d * rws_a) / (b * c - d * a)
     y = (rws_a - a * x) / b
-    return sqrt(x ** 2 + y ** 2)
+    return sqrt(x ** 2 + y ** 2), x, y
 
 
 def shear(ws_upr, ws_lwr, hgt_upr, hgt_lwr):
@@ -146,6 +146,30 @@ def shear(ws_upr, ws_lwr, hgt_upr, hgt_lwr):
     return log(ws_upr / ws_lwr) / log(hgt_upr / hgt_lwr)
 
 
+def veer(dir_upr, dir_lwr, hgt_upr, hgt_lwr):
+    """Veer
+
+    Calculate vertical wind veer from horizontal directions
+
+    Parameters
+    ----------
+    dir_upr : float
+        Wind direction in the upper plane
+    dir_lwr : float
+        Wind direction in the lower plane
+    hgt_upr : float
+        Height of the upper plane
+    hgt_lwr : float
+        Height of the lower plane
+
+    Returns
+    -------
+    float
+        Veer
+    """
+    return (dir_upr - dir_lwr) / (hgt_upr - hgt_lwr)
+
+
 def extrapolate_windspeed(hgt, shr, ref_windspeed, ref_hgt):
     """Extrapolate windspeed
 
@@ -173,6 +197,30 @@ def extrapolate_windspeed(hgt, shr, ref_windspeed, ref_hgt):
     .. [1] https://en.wikipedia.org/wiki/Wind_profile_power_law
     """
     return ref_windspeed * pow(hgt / ref_hgt, shr)
+
+
+def extrapolate_wind_direction(hgt, vr, ref_wind_direction, ref_hgt):
+    """Extrapolate wind direction
+
+    Extrapolate wind direction using the linear law and veer
+
+    Parameters
+    ----------
+    hgt : float
+        Target height
+    vr : float
+        Vertical wind veer
+    ref_wind_direction : float
+        Reference wind direction
+    ref_hgt : float
+        Reference height
+
+    Returns
+    -------
+    float
+        Wind direction at target height
+    """
+    return ref_wind_direction + vr * (hgt - ref_hgt)
 
 
 def horiz_windspeed(L, dist, hub_hgt, lidar_hgt, azimuths, zeniths):
@@ -204,6 +252,7 @@ def horiz_windspeed(L, dist, hub_hgt, lidar_hgt, azimuths, zeniths):
 
     # IFP are using the same pitch for all measurements.
     # L.pitch = L.iloc[0].pitch
+    # L.roll = L.iloc[0].roll
 
     pitch_upr = (L.loc[0].pitch + L.loc[1].pitch) / 2.0
     pitch_lwr = (L.loc[2].pitch + L.loc[3].pitch) / 2.0
@@ -222,17 +271,24 @@ def horiz_windspeed(L, dist, hub_hgt, lidar_hgt, azimuths, zeniths):
         raise ValueError('One or more beams are under ground/water.')
 
     rws = [L.loc[s].radial_windspeed for s in sensors]
-    ws_upr = planar_windspeed(
+    ws_upr, x_upr, y_upr = planar_windspeed(
         rws[0], rws[1], pitch_upr, roll_upr,
         azimuths[0], azimuths[1], zeniths[0],  zeniths[1])
-    ws_lwr = planar_windspeed(
+    ws_lwr, x_lwr, y_lwr = planar_windspeed(
         rws[2], rws[3], pitch_lwr, roll_lwr,
         azimuths[2], azimuths[3], zeniths[2], zeniths[3])
+    dir_upr = atan2(y_upr, x_upr)
+    dir_lwr = atan2(y_lwr, x_lwr)
 
     shr = shear(ws_upr, ws_lwr, hgt_upr, hgt_lwr)
+    vr = veer(dir_upr, dir_lwr, hgt_upr, hgt_lwr)
+
     hws = extrapolate_windspeed(hub_hgt, shr, ws_lwr, hgt_lwr)
-    return hws, {
+    hwd = extrapolate_wind_direction(hub_hgt, vr, dir_lwr, hgt_lwr)
+
+    return hws, hwd, {
         'shear': shr,
+        'veer': vr,
         **{'rws{}'.format(s): rws[s] for s in sensors},
         **{'beam_hgt{}'.format(s): beam_hgts[s] for s in sensors},
         'planar_ws_upr': ws_upr,
@@ -374,6 +430,7 @@ def process(
         values computed by this processor. Available extra columns are:
 
         - :code:`shear` - Shear
+        - :code:`veer` - Veer
         - :code:`rws[0-3]` - radial wind speeds
         - :code:`beam_hgt[0-3]` - beam heights
         - :code:`planar_ws_(upr|lwr)` - planar wind speeds
@@ -382,7 +439,8 @@ def process(
     Returns
     -------
     pandas.DataFrame
-        hws column contains the computed horizontal wind speeds
+        hws and hwd column contains the computed horizontal wind speeds and
+        directions respectively
     """
 
     elevation = list(map(radians, [5.0, 5.0, -5.0, -5.0]))
@@ -393,7 +451,7 @@ def process(
     if set(df.columns) < set(columns):
         raise ValueError('DataFrame columns must be {}'.format(columns))
 
-    out_columns = ['hws']
+    out_columns = ['hws', 'hwd']
     if extra_columns is not None:
         out_columns += list(extra_columns)
 
@@ -404,7 +462,7 @@ def process(
     df.roll += roll_offset
 
     index = df.index
-    hws = pd.DataFrame(columns=out_columns, index=index, dtype=float)
+    out = pd.DataFrame(columns=out_columns, index=index, dtype=float)
 
     for i, k in zip(range(len(df)), range(4, len(df) + 1)):
         """
@@ -423,12 +481,12 @@ def process(
         win.set_index('los_id', inplace=True)
         win.sort_index(inplace=True)
 
-        hws0, extra = (
+        hws, hwd, extra = (
             horiz_windspeed(win, dist, hub_hgt, lidar_hgt, azimuths, zeniths))
 
-        row = [hws0]
+        row = [hws, hwd]
         if extra_columns is not None:
             row += [extra[c] for c in extra_columns]
-        hws.loc[time] = row
+        out.loc[time] = row
 
-    return hws.dropna()
+    return out.dropna()
