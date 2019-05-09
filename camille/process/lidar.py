@@ -34,40 +34,6 @@ def sample_hgt(i, hub_hgt, lidar_hgt, dist, pitch, roll, azm, zn):
     return hub_hgt + lidar_hgt + (dist / cos(zn)) * scale
 
 
-def planar_windspeed_cmr(rws_a, rws_b, pitch, roll, azm, zn):
-    """Planar windspeed
-
-    .. warning:: This function is incorrect and only produces correct results
-                 when roll = 0
-
-    Parameters
-    ----------
-    rws_a : float
-        Radial wind speed a
-    rws_b : float
-        Radial wind speed b
-    pitch : float
-    roll : float
-    azm : float
-        Line-of-sight azimuth
-    zn : float
-        Line-of-sight zenith
-
-    Returns
-    -------
-    float
-        Planar wind speed reconstructed from rws_a and rws_b
-    """
-    # x_divisor = 2 * (cos(zn) * cos(pitch) +
-    #                  sin(zn) * cos(azm) * sin(pitch) * sin(roll) -
-    #                  sin(zn) * sin(azm) * sin(pitch) * cos(roll))
-    # The above collapsed to this:
-    xdiv = 2 * (cos(zn) * cos(pitch) - sin(pitch) * sin(zn) * sin(azm - roll))
-    x = (rws_a + rws_b) / xdiv
-    y = (rws_a - rws_b) / (2 * sin(zn) * cos(azm) * cos(roll))
-    return sqrt(x ** 2 + y ** 2)
-
-
 def planar_windspeed(rws_a, rws_b, pitch, roll, azm_a, azm_b, zn_a, zn_b):
     """Planar windspeed
 
