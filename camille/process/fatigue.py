@@ -39,8 +39,8 @@ def sncurve(stress, k=None, logA=None, m=None, t=0, tref=25.0):
         x = np.zeros(len(logA) + 1)
         y = np.zeros(len(logA) + 1)
 
-        [x[0],x[-1]] = [12, -9]
-        [y[0],y[-1]] = [logA[0] - m[0] * 12, logA[-1] + m[ - 1] * 9]
+        [x[0], x[-1]] = [12, -9]
+        [y[0], y[-1]] = [logA[0] - m[0] * 12, logA[-1] + m[ - 1] * 9]
 
         for i in range(len(logA)-1, 0, -1):
             x[i] = (logA[i] - logA[i - 1]) / (m[i] - m[i - 1])
@@ -63,7 +63,7 @@ def process(series, window_length=3600, fs=5, sn_curve=None):
     Parameters
     ----------
     series : pandas.Series
-        Bridle tension [kN]
+        Stress in the material [MPa]
     window_length : int, optional
         Length of each window for fatigue calculations [s]
     fs : int or float, optional
@@ -107,18 +107,12 @@ def process(series, window_length=3600, fs=5, sn_curve=None):
             damage[w] = np.nan
             continue
 
-        stress = _calculate_stress(data)
-        dmg = _calc_damage(stress, sn_curve)
+        dmg = _calc_damage(data, sn_curve)
         seconds_per_year = 3600 * 24 * 365
         dmb_calc = seconds_per_year / window_length * dmg
         damage[w] = dmb_calc
 
     return pd.Series(damage, index=index)
-
-
-def _calculate_stress(data):
-    A = 2 * math.pi / 4 * 132e-3 ** 2  # 132mm chain
-    return 1e-3 * data / A  # Tension (in kN) converted to MPa
 
 
 def _calc_damage(data, sn_curve):

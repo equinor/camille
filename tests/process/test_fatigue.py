@@ -4,10 +4,9 @@ import pandas as pd
 import pytest
 
 from camille import process
-from camille.process.mooring_fatigue import _calculate_stress
-from camille.process.mooring_fatigue import _calc_damage
-from camille.process.mooring_fatigue import _is_bad_data
-from camille.process.mooring_fatigue import sncurve
+from camille.process.fatigue import _calc_damage
+from camille.process.fatigue import _is_bad_data
+from camille.process.fatigue import sncurve
 import math
 
 refcase = [0.60727647, 0.14653493, 0.19643957, 0.56821631, 0.88833878, 0.29612997,
@@ -45,10 +44,11 @@ sn_curve = { 'logA': math.log10(6e10),
 
 def test_process():
     series = pd.Series(data=refcase, name='bridle1')
-    res = process.mooring_fatigue(series,
-                                  window_length=1,
-                                  fs=5,
-                                  sn_curve=sn_curve)
+    stress = process.mooring_stress(series, diameter=132)
+    res = process.fatigue(stress,
+                          window_length=1,
+                          fs=5,
+                          sn_curve=sn_curve)
     assert np.allclose(res.values.T, mooring_fatigue_ref)
 
 
@@ -102,21 +102,14 @@ def test_constant():
     assert is_bad
 
 
-def test_calculate_stress():
-    signal = np.array([2, 1, 3, 2, 4])
-    ref = np.array([0.07307389, 0.03653695, 0.10961084,
-                    0.07307389, 0.14614779])
-    stress = _calculate_stress(signal)
-    assert np.allclose(stress, ref)
-
-
 def assert_index_set_to_window_start(
         series, window_length, fs, unprocessed_series_index):
     nsamples = len(series)
-    res = process.mooring_fatigue(series,
-                                  window_length=window_length,
-                                  fs=fs,
-                                  sn_curve=sn_curve)
+    stress = process.mooring_stress(series, diameter=132)
+    res = process.fatigue(stress,
+                          window_length=window_length,
+                          fs=fs,
+                          sn_curve=sn_curve)
     step = window_length * fs
     first_invalid = nsamples - (nsamples % step)
     assert (res.index == unprocessed_series_index[:first_invalid:step]).all()
