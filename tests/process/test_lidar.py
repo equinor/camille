@@ -1,6 +1,6 @@
 from camille.process.lidar import sample_hgt, process
 from datetime import datetime, timedelta
-from hypothesis import given, example, settings, reproduce_failure
+from hypothesis import given, example, settings
 from hypothesis.strategies import builds, floats, integers
 from itertools import count
 from math import acos, atan2, cos, pi, radians, sin, tan
