@@ -465,10 +465,8 @@ def process(
     out = pd.DataFrame(columns=out_columns, index=index, dtype=float)
 
     for i, k in zip(range(len(df)), range(4, len(df) + 1)):
-        """
-        We compute the horizontal windspeed using four LOS measurements. We
-        therefor consider windows of size four.
-        """
+        # We compute the horizontal windspeed using four LOS measurements. We
+        # therefor consider windows of size 4
 
         win = df.iloc[i:k]
         time = win.index[0]
