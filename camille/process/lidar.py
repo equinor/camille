@@ -474,7 +474,7 @@ def process(
         time = win.index[0]
 
         if not predicate(win):
-            hws.loc[time] = np.nan
+            out.loc[time] = np.nan
             continue
 
         win.reset_index(inplace=True)
