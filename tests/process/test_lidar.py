@@ -12,8 +12,8 @@ import pandas as pd
 
 elevation = list(map(radians, [5.0, 5.0, -5.0, -5.0]))
 telescope = list(map(radians, [-15.0, 15.0, -15.0, 15.0]))
-zenith = [acos(cos(elevation[i]) * cos(telescope[i])) for i in range(4)]
-azimuth = [atan2(sin(elevation[i]), tan(telescope[i])) for i in range(4)]
+zenith  = [acos(cos(e) * cos(t)) for e, t in zip(elevation, telescope)]
+azimuth = [atan2(sin(e), tan(t)) for e, t in zip(elevation, telescope)]
 hub_hgt = 100
 
 
