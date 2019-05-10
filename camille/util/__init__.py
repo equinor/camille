@@ -13,6 +13,5 @@ Available functions
 from .resample import resample
 
 __all__ = [
-    'BazeIter',
     'resample',
 ]
