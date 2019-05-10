@@ -101,7 +101,7 @@ def resample(series, onto=None, interp='linear'):
     """
     try:
         idx = onto.index
-    except:
+    except AttributeError:
         idx = onto
 
     ts = (
