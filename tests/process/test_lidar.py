@@ -104,31 +104,25 @@ def uniform_dir(alpha):
     return np.array([-cos(alpha), sin(alpha), 0.0])
 
 
-windspeeds = floats(min_value=0.5, max_value=18.0)
+distances = integers(min_value=50, max_value=400)
 directions = builds(uniform_dir, floats(min_value=-pi / 4, max_value=pi / 4))
 angles = floats(min_value=-0.0872665, max_value=0.0872665)
+windspeeds = floats(min_value=0.5, max_value=18.0)
 
 windfields = builds(windfield_function, directions, windspeeds)
 lidars = builds(lidar_simulator, angles, angles)
-
-shears = floats(min_value=0.143 / 2, max_value=0.143 * 2)
-veers = floats(min_value=-0.0314159, max_value=0.0314159) # +- 1.8 deg / m
-sheared_windfields = builds(
-    windfield_function, directions, windspeeds, shears)
-veered_windfields = builds(
-    windfield_function, directions, windspeeds, veer=veers)
 # shear is inaccurate with roll, could be addressed
 flat_lidars = builds(lidar_simulator, angles)
 
-distances = integers(min_value=50, max_value=400)
+shears = floats(min_value=0.143 / 2, max_value=0.143 * 2)
+veers = floats(min_value=-0.0314159, max_value=0.0314159) # +- 1.8 deg / m
+sheared_veering_windfields = builds(
+    windfield_function, directions, windspeeds, shear=shears, veer=veers)
 
 processor_input = builds(
     generate_input, windfields, lidars, distances)
-sheared_processor_input = builds(
-    generate_input, sheared_windfields, flat_lidars, distances)
-veered_processor_input = builds(
-    generate_input, veered_windfields, flat_lidars, distances)
-
+sheared_veering_processor_input = builds(
+    generate_input, sheared_veering_windfields, flat_lidars, distances)
 
 def process_with_args(dist, df):
     return process(
@@ -157,33 +151,18 @@ def test_lidar(args):
         assert row.hws == approx(ref_speed)
 
 
-@given(sheared_processor_input)
+@given(sheared_veering_processor_input)
 @settings(deadline=None)
-def test_lidar_sheared_windfield(args):
+def test_lidar_sheared_veering_windfield(args):
     dist, windfield, _, df = args
     processed = process_with_args(dist, df)
 
     ref_speed, _ = windfield(np.array([dist, 0, hub_hgt]))
     ref_direction = windfield.yaw_direction()
     ref_shear = windfield.shear
-    for _, row in processed.iterrows():
-        assert row.shear == approx(ref_shear)
-        assert row.veer == approx(0)
-        assert row.hwd == approx(ref_direction)
-        assert row.hws == approx(ref_speed)
-
-
-@given(veered_processor_input)
-@settings(deadline=None)
-def test_lidar_veered_windfield(args):
-    dist, windfield, _, df = args
-    processed = process_with_args(dist, df)
-
-    ref_speed, _ = windfield(np.array([dist, 0, hub_hgt]))
-    ref_direction = windfield.yaw_direction()
     ref_veer = windfield.veer
     for _, row in processed.iterrows():
-        assert row.shear == approx(0)
+        assert row.shear == approx(ref_shear)
         assert row.veer == approx(ref_veer)
         assert row.hwd == approx(ref_direction)
         assert row.hws == approx(ref_speed)

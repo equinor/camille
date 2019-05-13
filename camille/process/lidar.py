@@ -445,8 +445,8 @@ def process(
 
     elevation = list(map(radians, [5.0, 5.0, -5.0, -5.0]))
     telescope = list(map(radians, [-15.0, 15.0, -15.0, 15.0]))
-    zeniths = [acos(cos(elevation[i]) * cos(telescope[i])) for i in range(4)]
-    azimuths = [atan2(sin(elevation[i]), tan(telescope[i])) for i in range(4)]
+    zeniths  = [acos(cos(e) * cos(t)) for e, t in zip(elevation, telescope)]
+    azimuths = [atan2(sin(e), tan(t)) for e, t in zip(elevation, telescope)]
 
     if set(df.columns) < set(columns):
         raise ValueError('DataFrame columns must be {}'.format(columns))
