@@ -1,9 +1,9 @@
 import math
-
 import numpy as np
 import rainflow
 import pandas as pd
 from scipy.interpolate import interp1d
+
 
 def sncurve(stress, k=None, logA=None, m=None, t=0, tref=25.0):
     """SN Curve
@@ -122,10 +122,10 @@ def _calc_damage(data, sn_curve):
         amplitude = high - 0.5 * (high + low)
         if amplitude > 0:
             cycles.append(mult)
-            stress_ranges.append( 2*amplitude )
+            stress_ranges.append(2*amplitude)
 
     N = sncurve(stress_ranges, **sn_curve)
-    damage = sum(sorted(cycles/N))
+    damage = sum(sorted(cycles / N))
     return damage
 
 
