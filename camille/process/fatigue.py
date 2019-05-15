@@ -125,7 +125,7 @@ def _calc_damage(data, sn_curve):
             stress_ranges.append( 2*amplitude )
 
     N = sncurve(stress_ranges, **sn_curve)
-    damage = sum(sorted(cycles/N))
+    damage = sum(sorted(cycles / N))
     return damage
 
 
