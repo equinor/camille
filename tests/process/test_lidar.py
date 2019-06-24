@@ -38,8 +38,7 @@ class lidar_simulator:
         loc[2] += hub_hgt
 
         # Sanity check
-        assert loc[2] == approx(
-            sample_hgt(beam, hub_hgt, 0, distance, p, r, a, z))
+        assert loc[2] == approx(sample_hgt(hub_hgt, 0, distance, p, r, a, z))
 
         _, wnd = windfield(loc)
         rws = np.dot(-wnd, los)

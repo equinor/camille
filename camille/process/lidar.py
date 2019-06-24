@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 
 
-def sample_hgt(i, hub_hgt, lidar_hgt, dist, pitch, roll, azm, zn):
+def sample_hgt(hub_hgt, lidar_hgt, dist, pitch, roll, azm, zn):
     """Sample height
 
     Parameters
@@ -24,7 +24,7 @@ def sample_hgt(i, hub_hgt, lidar_hgt, dist, pitch, roll, azm, zn):
     Returns
     -------
     float
-        Height of the beam for line-of-sight `i` at distance `dist`
+        Height of the beam at distance `dist`
     """
     # scale = (cos(zn) * sin(pitch) +
     #         -sin(zn) * cos(azm) * cos(pitch) * sin(roll) +
@@ -260,7 +260,7 @@ def horiz_windspeed(L, dist, hub_hgt, lidar_hgt, azimuths, zeniths):
     roll_lwr = (L.loc[2].roll + L.loc[3].roll) / 2.0
 
     beam_hgts = [
-        sample_hgt(s, hub_hgt, lidar_hgt, dist,
+        sample_hgt(hub_hgt, lidar_hgt, dist,
                    L.loc[s].pitch, L.loc[s].roll, azimuths[s], zeniths[s])
         for s in sensors
     ]
