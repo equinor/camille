@@ -1,4 +1,4 @@
-from camille.process.lidar import sample_hgt, process
+from camille.core import sample_hgt
 from datetime import datetime, timedelta
 from hypothesis import given, example, settings
 from hypothesis.strategies import builds, floats, integers
@@ -6,6 +6,7 @@ from itertools import count
 from math import acos, atan2, cos, pi, radians, sin, tan
 from pytest import approx
 from pytz import utc
+import camille
 import numpy as np
 import pandas as pd
 
@@ -14,7 +15,7 @@ elevation = list(map(radians, [5.0, 5.0, -5.0, -5.0]))
 telescope = list(map(radians, [-15.0, 15.0, -15.0, 15.0]))
 zenith  = [acos(cos(e) * cos(t)) for e, t in zip(elevation, telescope)]
 azimuth = [atan2(sin(e), tan(t)) for e, t in zip(elevation, telescope)]
-hub_hgt = 100
+lidar_hgt = 100
 
 
 class lidar_simulator:
@@ -35,10 +36,10 @@ class lidar_simulator:
                               sin(z) * cos(a),
                               sin(z) * sin(a)])
         loc = los * d
-        loc[2] += hub_hgt
+        loc[2] += lidar_hgt
 
         # Sanity check
-        assert loc[2] == approx(sample_hgt(hub_hgt, 0, distance, p, r, a, z))
+        assert loc[2] == approx(sample_hgt(lidar_hgt, distance, p, r, a, z))
 
         _, wnd = windfield(loc)
         rws = np.dot(-wnd, los)
@@ -58,8 +59,8 @@ class windfield_function:
 
     def __call__(self, pnt):
         hgt = pnt[2]
-        u = self.ref_speed * pow(hgt / hub_hgt, self.shear)
-        veer_offset = self.veer * (hub_hgt - hgt)
+        u = self.ref_speed * pow(hgt / lidar_hgt, self.shear)
+        veer_offset = self.veer * (lidar_hgt - hgt)
         rot = np.array([[ cos(veer_offset), sin(veer_offset), 0],
                         [-sin(veer_offset), cos(veer_offset), 0],
                         [                0,                0, 1]])
@@ -124,15 +125,13 @@ sheared_veering_processor_input = builds(
     generate_input, sheared_veering_windfields, flat_lidars, distances)
 
 def process_with_args(dist, df):
-    return process(
-        df,
-        dist,
-        hub_hgt=hub_hgt,
-        lidar_hgt=0,
-        pitch_offset=0,
-        roll_offset=0,
-        extra_columns=['shear', 'veer'],
-    )
+    out = camille.lidar.windfield_desc(df, dist, lidar_hgt, 0)
+    out['speed'] = out.speed_lwr
+    out['dir'] = out.dir_lwr
+    out['height'] = out.height_lwr
+    out['hws'] = camille.lidar.extrapolate_windspeed(out, lidar_hgt)
+    out['hwd'] = camille.lidar.extrapolate_winddirection(out, lidar_hgt)
+    return out
 
 
 @given(processor_input)
@@ -141,7 +140,7 @@ def test_lidar(args):
     dist, windfield, _, df = args
     processed = process_with_args(dist, df)
 
-    ref_speed, _ = windfield(np.array([dist, 0, hub_hgt]))
+    ref_speed, _ = windfield(np.array([dist, 0, lidar_hgt]))
     ref_direction = windfield.yaw_direction()
     for _, row in processed.iterrows():
         assert row.shear == approx(0)
@@ -156,7 +155,7 @@ def test_lidar_sheared_veering_windfield(args):
     dist, windfield, _, df = args
     processed = process_with_args(dist, df)
 
-    ref_speed, _ = windfield(np.array([dist, 0, hub_hgt]))
+    ref_speed, _ = windfield(np.array([dist, 0, lidar_hgt]))
     ref_direction = windfield.yaw_direction()
     ref_shear = windfield.shear
     ref_veer = windfield.veer
