@@ -20,7 +20,6 @@ Available processors
 from .atm_stb import process as atm_stb
 from .delta_temp import process as delta_temp
 from .fft import process as fft
-from .lidar import process as lidar
 from .pass_filter import low_pass
 from .pass_filter import high_pass
 from .pass_filter import band_pass
@@ -31,7 +30,6 @@ __all__ = [
     'atm_stb',
     'delta_temp',
     'fft',
-    'lidar',
     'low_pass',
     'high_pass',
     'band_pass',
