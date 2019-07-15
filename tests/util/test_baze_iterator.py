@@ -54,11 +54,25 @@ def test_left_padding():
         pd.testing.assert_series_equal(data, sin(s - padding, e))
 
 
+def test_left_integer_padding():
+    padding = 360 * 25
+    for data, s, e in baze.create_iterator(sin_tag, t3, t4, padding=padding):
+        assert len(data) == 8640 + padding
+        pd.testing.assert_series_equal(data, sin(s - timedelta(hours=25), e))
+
+
 def test_right_padding():
     padding = timedelta(hours=1)
     for data, s, e in baze.create_iterator(sin_tag, t2, t3, padding=padding, leftpad=False, rightpad=True):
         assert len(data) == 9000
         pd.testing.assert_series_equal(data, sin(s, e + padding))
+
+
+def test_right_integer_padding():
+    padding = 360 * 25
+    for data, s, e in baze.create_iterator(sin_tag, t1, t2, padding=padding, leftpad=False, rightpad=True):
+        assert len(data) == 8640 + padding
+        pd.testing.assert_series_equal(data, sin(s, e + timedelta(hours=25)))
 
 
 def test_non_one_day_interval():
