@@ -1,6 +1,20 @@
 #!/usr/bin/env python
 
-from setuptools import setup
+import pybind11
+from setuptools import setup, Extension
+
+ext_modules = [
+    Extension(
+        'camille.process.lidar2extension',
+        ['camille/process/lidar2.cpp'],
+        include_dirs=[
+            # Path to pybind11 headers
+            pybind11.get_include(),
+            pybind11.get_include(user=True)
+        ],
+        language='c++'
+    ),
+]
 
 setup(
     name='camille',
@@ -11,6 +25,7 @@ setup(
         'camille/source',
         'camille/util',
     ],
+    ext_modules=ext_modules,
     author='Software Innovation Bergen, Equinor ASA',
     author_email='fg_gpl@equinor.com',
     description='Camille Wind',

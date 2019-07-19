@@ -26,6 +26,7 @@ from .pass_filter import high_pass
 from .pass_filter import band_pass
 from .mooring_fatigue import process as mooring_fatigue
 from .rolling_median import process as rolling_median
+from .lidar2 import process as lidar2
 
 __all__ = [
     'atm_stb',
