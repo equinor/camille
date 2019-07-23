@@ -2,7 +2,7 @@ import os
 import datetime
 import pytz
 import pandas as pd
-from camille.source.bazefetcher import _safe_read, _tidy_frame
+from camille.source.bazefetcher import _tidy_frame
 
 
 def _to_midnight_utc(timestamp):
@@ -212,7 +212,11 @@ class Bazefetcher:
                     if exc.errno != errno.EEXIST:
                         raise
 
-            file_content = _safe_read(tag_path)
+            try:
+                file_content = pd.read_json(tag_path)
+            except FileNotFoundError:
+                file_content = pd.DataFrame()
+
             _tidy_frame(file_content, tzinfo=pytz.utc)
             if not file_content.empty:
                 ts = _merge(ts, into=file_content, overwrite=overwrite)

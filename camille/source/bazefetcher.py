@@ -31,16 +31,6 @@ def _fn_end_date(fn):
     return datetime.datetime.strptime(date_str, date_fmt)
 
 
-def _safe_read(fn, **kwargs):
-    """
-    TODO: Manually infer pandas read function
-    """
-    try:
-        return pd.read_json(fn, **kwargs)
-    except:
-        return pd.DataFrame()
-
-
 def _tidy_frame(df, tzinfo):
     if df is None or df.empty or 't' not in df.columns:
         df.drop(df.index, inplace=True)
@@ -111,7 +101,7 @@ def _extend_bwd(start_date, df, src_dirs, tag, fn_regex, tzinfo):
         if not files: break
 
         prev_fn = max(files, key=lambda x: _fn_end_date( os.path.basename(x) ))
-        tmp_df = _safe_read(prev_fn)
+        tmp_df = pd.read_json(prev_fn)
 
         if tmp_df.empty:
             files.remove(prev_fn)
@@ -146,7 +136,7 @@ def _extend_fwd(end_date, df, src_dirs, tag, fn_regex, tzinfo):
 
         next_fn = min(files,
                       key=lambda x: _fn_start_date( os.path.basename(x) ))
-        tmp_df = _safe_read(next_fn)
+        tmp_df = pd.read_json(next_fn)
 
         if tmp_df.empty:
             files.remove(next_fn)
@@ -239,7 +229,7 @@ class Bazefetcher:
         files = _get_files_between_start_and_end(
             self.src_dirs, tag, start_date, end_date)
 
-        L = [_safe_read(fn) for fn in files]
+        L = [pd.read_json(fn) for fn in files]
         df = pd.concat(L, sort=True) if len(L) > 0 else pd.DataFrame()
 
         _tidy_frame(df, self.tzinfo)
