@@ -338,8 +338,9 @@ class BazeIter(abc.Iterable, abc.Sized):
             Must be timezone aware
         interval : datetime.timedelta
             The interval of the iterations. Must be days. Defaults to 1
-        padding : datetime.timedelta
-            The padding that is applied to each iteration. Defaults to 0
+        padding : datetime.timedelta or int
+            The padding that is applied to each iteration. Can be specified as
+            a timedelta or number of samples (int). Defaults to 0
         leftpad : Bool
             Add the padding to the start of each iteration. Defaults to True
         rightpad : Bool
@@ -373,8 +374,10 @@ class BazeIter(abc.Iterable, abc.Sized):
         for b, e in self.it:
             e = min(e, self.stop)
             lrange, rrange = b, e
-            if self.leftpad: lrange = b - self.padding
-            if self.rightpad: rrange = e + self.padding
+
+            if not isinstance(self.padding, int):
+                if self.leftpad: lrange = b - self.padding
+                if self.rightpad: rrange = e + self.padding
 
             if isinstance(self.tags, str):
                 d = self.baze(self.tags, lrange, rrange,
@@ -384,10 +387,50 @@ class BazeIter(abc.Iterable, abc.Sized):
                                   **self.tag_kwargs.get(t, {}))
                      for t in self.tags}
 
+            if isinstance(self.padding, int):
+                if isinstance(d, dict):
+                    for k in d:
+                        d[k] = self._index_pad(d[k], lrange, rrange, k)
+                else:
+                    d = self._index_pad(d, lrange, rrange, self.tags)
+
             yield d, b, e
 
     def __len__(self):
         return len(self.it)
+
+    def _index_pad(self, series, s, e, tag):
+        min_time = None
+        max_time = None
+        if self.leftpad:
+            p = s
+            while True:
+                p -= datetime.timedelta(days=1)
+
+                a = self.baze(tag, p, s, **self.tag_kwargs.get(tag, {}))
+                if len(a) >= self.padding:
+                    return a.iloc[-self.padding:].append(series)
+
+                if not min_time:
+                    min_time = _find_start_time(self.baze, tag)
+
+                if min_time and p <= min_time:
+                    return series
+
+        if self.rightpad:
+            p = e
+            while True:
+                p += datetime.timedelta(days=1)
+
+                a = self.baze(tag, e, p, **self.tag_kwargs.get(tag, {}))
+                if len(a) >= self.padding:
+                    return series.append(a.iloc[:self.padding])
+
+                if not max_time:
+                    min_time = _find_stop_time(self.baze, tag)
+
+                if max_time and p >= max_time:
+                    return series
 
 
 def _get_all_files(src_dirs, tags):
