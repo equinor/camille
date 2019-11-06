@@ -80,8 +80,8 @@ def _get_fn_regex(tag):
 
 def _get_files_between_start_and_end(src_dirs, tag, start_date, end_date):
     return _get_files(src_dirs, tag, _get_fn_regex(tag),
-                       lambda fn : _fn_start_date(fn) < end_date
-                                   and start_date < _fn_end_date(fn))
+        lambda fn: _fn_start_date(fn) < end_date
+               and _fn_end_date(fn) > start_date)
 
 
 def _extend_bwd(start_date, df, src_dirs, tag, fn_regex, tzinfo):
