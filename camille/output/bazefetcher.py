@@ -26,21 +26,29 @@ def _generate_tag_location(
     return path
 
 
-def _merge(ts, into, overwrite=False):
+def _merge(ts, into, overwrite=False, fill=False):
     into_start, into_end = min(into.index), max(into.index)
     ts_start, ts_end = min(ts.index), max(ts.index)
 
     overlap = into_start <= ts_end and into_end >= ts_start
 
-    if overlap and not overwrite:
+    if not overlap or overwrite:
+        eps = datetime.timedelta(microseconds=1)
+        ts = pd.concat([
+            into.value[:ts_start - eps],
+            ts,
+            into.value[ts_end + eps:]
+        ])
+    elif fill:
+        idx = ~ts.index.isin(into.index)
+        ts = pd.concat([into.value, ts[idx]]).sort_index()
+    else:
         msg = (
             'you are attempting to write data for a time interval'
-            ' that already exists. Set overwrite=True to overwrite.'
+            ' that already exists. Set either overwrite=True or fill=True, to'
+            ' overwrite interval, or fill in missing.'
         )
         raise ValueError(msg)
-
-    eps = datetime.timedelta(microseconds=1)
-    ts = pd.concat([into.value[:ts_start - eps], ts, into.value[ts_end + eps:]])
 
     return ts
 
@@ -116,7 +124,8 @@ class Bazefetcher:
                  tag,
                  start=None,
                  end=None,
-                 overwrite=False):
+                 overwrite=False,
+                 fill=False):
         """
         Parameters
         ----------
@@ -132,6 +141,10 @@ class Bazefetcher:
         overwrite : bool, optional
             True - existing data, which overlaps with the data
             to be written, is deleted.
+            False - raise a ValueError on overwrite attempt.
+            Default is False
+        fill : bool, optional
+            True - existing timestamps are kept, new are inserted
             False - raise a ValueError on overwrite attempt.
             Default is False
         """
@@ -180,7 +193,7 @@ class Bazefetcher:
 
             _tidy_frame(old, tzinfo=pytz.utc)
             if not old.empty:
-                view = _merge(view, into=old, overwrite=overwrite)
+                view = _merge(view, into=old, overwrite=overwrite, fill=fill)
 
             view = pd.DataFrame({'t': view.index, 'v': view.values})
             view.to_json(tag_path, compression='gzip', orient='records')

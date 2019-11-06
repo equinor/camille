@@ -209,6 +209,35 @@ def test_multiple_writes_to_same_file(tmpdir):
     assert_correctly_loaded(ts, tmpdir, t0, t2)
 
 
+def test_multiple_writes_to_same_file_fill(tmpdir):
+    t0 = datetime(2018, 1, 1, 5, tzinfo=utc)
+    t1 = datetime(2018, 1, 1, 10, tzinfo=utc)
+    t2 = datetime(2018, 1, 1, 15, tzinfo=utc)
+    t3 = datetime(2018, 1, 1, 20, tzinfo=utc)
+
+    rng = pd.date_range(t0, t3, freq='H', name="time", closed='left')
+    data = np.random.randn(len(rng))
+    ts = pd.Series(data, name="value", index=rng)
+    data2 = data + 1
+    ts2 = pd.Series(data2, name="value", index=rng)
+
+    bazeout = Bazeoutput(str(tmpdir))
+    bazeout(ts, "test", t0, t1)
+    bazeout(ts, "test", t2, t3)
+    bazeout(ts2, "test", t0, t3, fill=True)
+
+    expected = pd.concat([
+        ts[:t1 - eps],
+        ts2[t1:t2 - eps],
+        ts[t2:]
+    ], sort=True)
+
+    assert_files_list(tmpdir, t0, 1)
+    assert_correctly_loaded(expected, tmpdir, t0, t3)
+    assert_correct_raw_values(expected, tmpdir, t0)
+
+
+
 def test_multiple_writes_to_same_file_with_overlap_no_overwrite(tmpdir):
     t0 = datetime(2018, 1, 1, 5, tzinfo=utc)
     t1 = datetime(2018, 1, 1, 8, tzinfo=utc)
