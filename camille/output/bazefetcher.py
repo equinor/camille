@@ -152,18 +152,17 @@ class Bazefetcher:
         if not start <= end:
             raise ValueError('start_date must be earlier than end_date')
 
-        series = series[start:end-eps]
+        series = series[start:end-eps].tz_convert(pytz.utc)
 
-        for s, e in _daterange( start, end ):
-            tag_path = _generate_tag_location( self.root,
-                                               tag,
-                                               s,
-                                               e,
-                                               full_path=True,
-                                               suffix='.json.gz' )
-
-            ts = series[s:e-eps]
-            if ts.empty: continue
+        for d, view in series.groupby(series.index.date):
+            s = datetime.datetime(d.year, d.month, d.day, tzinfo=pytz.utc)
+            e = s + datetime.timedelta(days=1)
+            tag_path = _generate_tag_location(self.root,
+                                              tag,
+                                              s,
+                                              e,
+                                              full_path=True,
+                                              suffix='.json.gz')
 
             if not os.path.exists(os.path.dirname(tag_path)):
                 try:
@@ -173,13 +172,15 @@ class Bazefetcher:
                         raise
 
             try:
-                file_content = pd.read_json(tag_path)
-            except FileNotFoundError:
-                file_content = pd.DataFrame()
+                old = pd.read_json(tag_path)
+            except (FileNotFoundError,
+                    ValueError,
+                    pd.errors.EmptyDataError):
+                old = pd.DataFrame()
 
-            _tidy_frame(file_content, tzinfo=pytz.utc)
-            if not file_content.empty:
-                ts = _merge(ts, into=file_content, overwrite=overwrite)
+            _tidy_frame(old, tzinfo=pytz.utc)
+            if not old.empty:
+                view = _merge(view, into=old, overwrite=overwrite)
 
-            ts = pd.DataFrame( { 't':ts.index, 'v':ts.values } )
-            ts.to_json(tag_path, compression='gzip', orient='records' )
+            view = pd.DataFrame({'t': view.index, 'v': view.values})
+            view.to_json(tag_path, compression='gzip', orient='records')
