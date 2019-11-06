@@ -5,46 +5,6 @@ import pandas as pd
 from camille.source.bazefetcher import _tidy_frame
 
 
-def _to_midnight_utc(timestamp):
-    """ Copied from bazefetcher, logic modified
-
-    Converts a timestamp to an UTC timestamp, to midnight of the
-    given date (00:00:00). All timestamps are converted to UTC if they
-    have timezone information, and assumed to already be UTC if they
-    have no timezone information.
-    """
-    try:
-        timestamp = pytz.utc.localize(timestamp)
-    except ValueError:
-        timestamp = timestamp.astimezone(pytz.utc)
-    timestamp = timestamp.replace(hour=0, minute=0, second=0, microsecond=0)
-    return timestamp
-
-
-def _daterange(start_date, end_date):
-    """
-    Generates dates in range between start_date and end_date with one
-    day difference starting from start_date.
-    First calls _to_midnight_utc on both.
-    :param start_date: Start date timestamp, inclusive.
-    :param end_date: End date timestamp, exclusive. Note, that if end
-    time date is later than midnight of that day, the midnight date
-    will be generated. If the date is exactly at midninght,
-    it's not generated
-    :return:
-    """
-    if start_date != end_date:
-        is_end_on_midnight = _to_midnight_utc(end_date) == end_date
-        start_date = _to_midnight_utc(start_date)
-        end_date = _to_midnight_utc(end_date)
-        if is_end_on_midnight:
-            end_date -= datetime.timedelta(days=1)
-        while start_date <= end_date:
-            next_day = start_date + datetime.timedelta(days=1)
-            yield (start_date, next_day)
-            start_date = next_day
-
-
 def _generate_tag_location(
     root, tag_name, start_date, end_date, full_path=True, suffix=".json"
     ):
