@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from camille.source import Bazefetcher
+from camille.source import Bazefetcher, TagNotFoundError
 from camille.source.bazefetcher import _get_files_between_start_and_end
 from datetime import datetime, timedelta
 from math import pi
@@ -110,7 +110,7 @@ def test_no_directories():
             in str(excinfo.value))
 
 def test_non_existing_tag():
-    with pytest.raises(ValueError) as excinfo:
+    with pytest.raises(TagNotFoundError) as excinfo:
         baze('non-existing-tag', t1_1, t1_1_1)
     assert 'Tag non-existing-tag not found' in str(excinfo.value)
 

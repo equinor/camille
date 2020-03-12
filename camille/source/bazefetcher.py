@@ -7,6 +7,8 @@ import pandas as pd
 from collections import abc
 from math import ceil
 
+class TagNotFoundError(ValueError):
+    pass
 
 date_pattern = r'[0-9]{4}-[0-9]{2}-[0-9]{2}'
 time_pattern = r'[0-9]{2}\.[0-9]{2}\.[0-9]{2}\+[0-9]{2}\.[0-9]{2}'
@@ -55,7 +57,7 @@ def _get_files(src_dirs, tag, fn_regex, date_pred):
     tag_roots = list(filter(isdir, (join(dr, tag) for dr in src_dirs)))
 
     if not tag_roots:
-        raise ValueError('Tag {} not found in {}'.format(tag, src_dirs))
+        raise TagNotFoundError('Tag {} not found in {}'.format(tag, src_dirs))
 
     files = [join(r, fn) for r in tag_roots for fn in os.listdir(r)
              if fn_regex.match(fn) and date_pred(fn)]

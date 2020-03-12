@@ -15,7 +15,7 @@ Available functions
 """
 
 
-from .bazefetcher import Bazefetcher
+from .bazefetcher import Bazefetcher, TagNotFoundError
 from .windiris import windiris
 
 
