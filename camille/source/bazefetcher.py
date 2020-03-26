@@ -218,7 +218,7 @@ class Bazefetcher:
         Returns
         -------
         pandas.TimeSeries
-           Loaded time series
+            Loaded time series
         """
         if start_date.tzinfo is None or end_date.tzinfo is None:
             raise ValueError('dates must be timezone aware')
