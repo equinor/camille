@@ -17,9 +17,11 @@ Available functions
 
 from .bazefetcher import Bazefetcher, TagNotFoundError
 from .windiris import windiris
+from .zephyre import Zephyre
 
 
 __all__ = [
-    'bazefetcher',
-    'windiris'
+    'Bazefetcher',
+    'windiris',
+    'Zephyre',
 ]
