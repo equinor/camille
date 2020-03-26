@@ -11,7 +11,9 @@ Available functions
 """
 
 from .resample import resample
+from .utcdate import utcdate
 
 __all__ = [
     'resample',
+    'utcdate',
 ]
