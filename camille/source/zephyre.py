@@ -14,7 +14,7 @@ def isoformat(date):
     if date.tzinfo != utc:
         raise ValueError('Dates must be UTC')
     date = date.replace(tzinfo=None)
-    return date.isoformat(timespec="milliseconds") + 'Z'
+    return date.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
 
 
 def parse_response(strio, tzinfo=utc):

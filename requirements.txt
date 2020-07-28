@@ -1,6 +1,6 @@
 numpy
 pandas
 scipy
-rainflow
+rainflow==2.2.0
 requests
 pytz
