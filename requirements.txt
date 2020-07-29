@@ -1,5 +1,5 @@
 numpy
-pandas
+pandas<=1.0.3
 scipy
 rainflow==2.2.0
 requests
