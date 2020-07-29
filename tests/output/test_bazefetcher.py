@@ -93,7 +93,7 @@ def test_two_days_two_files(tmpdir):
     t1 = datetime(2018, 2, 1, 3, 1, tzinfo=utc)
 
     rng = pd.date_range(t0, t1, freq='30T', name="time")
-    data = np.array(range(9))
+    data = np.array(range(9), dtype=np.int64)
     ts = pd.Series(data, name="value", index=rng)
     generate_output(tmpdir, ts, t0, t1)
 
@@ -142,7 +142,7 @@ def test_no_utc(tmpdir):
     t0 = get_test_date(tz_day, start_hour, tzinfo=tzinfo)
     t1 = get_test_date(tz_day, end_hour, tzinfo=tzinfo)
 
-    data = np.array([x for x in range(start_hour, end_hour)])
+    data = np.array([x for x in range(start_hour, end_hour)], dtype=np.int64)
     ts = get_test_series(t0, t1, data=data)
     generate_output(tmpdir, ts, t0, t1)
 
