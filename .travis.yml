@@ -3,19 +3,76 @@ language: python
 python:
   - "3.5"
   - "3.6"
+  - "3.7"
+  - "3.8"
 
 os:
   - linux
 
+stages:
+  - test
+  - name: deploy
+    if: tag IS PRESENT AND repo = equinor/camille
+
 matrix:
   fast_finish: true
   include:
-  - python: 3.7
+  - name: OSX Python 3.7
+    os: osx
+    osx_image: xcode9.4
+    language: generic
+
+  - name: OSX Python 3.8
+    os: osx
+    osx_image: xcode12
+    language: generic
+
+  - name: Manylinux
+    stage: deploy
+    python: 3.6
     dist: xenial
     sudo: true
-  - python: 3.8
-    dist: xenial
-    sudo: true
+    env:
+      - PYPI_BUILD: true
+      - CIBW_BUILD: '''cp35-manylinux_x86_64 cp36-manylinux_x86_64 cp37-manylinux_x86_64 cp38-manylinux_x86_64'''
+      - CIBW_BEFORE_ALL: '''yum install -y gcc ninja-build'''
+      - CIBW_BEFORE_BUILD: '''pip install cmake setuptools-scm -r requirements.txt && pip install --force-reinstall -r requirements-dev.txt'''
+    install: 
+      - pip3 install setuptools-scm cibuildwheel==1.5.5
+      - pip3 install -r requirements.txt
+      - pip3 install --force-reinstall -r requirements-dev.txt
+    before_script: 'true'
+    script: python3 -m cibuildwheel --output-dir dist
+    after_success: 'true'
+#  - name: Windows
+#    stage: deploy
+#    os: windows
+#    language: shell
+#    env:
+#      - PYPI_BUILD: true
+#      - CIBW_BUILD: '''cp35-win_amd64 cp36-win_amd64 cp37-win_amd64 cp38-win_amd64'''
+#      - CIBW_BEFORE_BUILD: '''pip3 install cmake setuptools-scm -r requirements.txt && pip3 install --force-reinstall -r requirements-dev.txt'''
+#      - PATH: /c/Python36:/c/Python36/Scripts:$PATH
+#    before_install:
+#      - choco install python --version 3.6.0
+#      - python -m pip install --upgrade pip
+#    install: pip install twine setuptools-scm cibuildwheel==1.5.5
+#    before_script: 'true'
+#    script: python -m cibuildwheel --output-dir dist
+#    after_success: 'true'
+  - name: MacOS
+    stage: deploy
+    os: osx
+    language: shell
+    env:
+      - PYPI_BUILD: true
+      - CIBW_BUILD: '''cp37-macosx_x86_64 cp38-macosx_x86_64'''
+      - CIBW_BEFORE_BUILD: '''pip3 install cmake setuptools-scm -r requirements.txt && pip3 install --force-reinstall -r requirements-dev.txt'''
+    before_install: python3 -m pip install --upgrade pip
+    install: pip3 install twine pathlib setuptools-scm cibuildwheel==1.5.5
+    before_script: 'true'
+    script: python3 -m cibuildwheel --output-dir dist
+    after_success: 'true'
 
 install:
   - pip3 install -r requirements.txt
@@ -36,9 +93,13 @@ after_success:
 deploy:
   - provider: pypi
     skip_cleanup: true
-    distributions: sdist bdist_wheel
+    skip_existing: true
+    edge: # necessary for windows deploy, leaving until the merge to master
+      source: native-api/dpl
+      branch: z-quotes
     on:
-      condition: $TRAVIS_PYTHON_VERSION = 3.6
+      condition: $PYPI_BUILD = true
+      repo: equinor/camille
       tags: true
     user: statoil-travis
     password:
