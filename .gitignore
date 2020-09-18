@@ -56,6 +56,9 @@ coverage.xml
 *.mo
 *.pot
 
+# Scikit-build stuff:
+_skbuild/
+
 # Django stuff:
 *.log
 local_settings.py

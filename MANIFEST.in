@@ -1,0 +1,4 @@
+include CMakeLists.txt
+include camille/core.cpp
+prune tests
+prune ci
