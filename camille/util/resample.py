@@ -105,7 +105,7 @@ def resample(series, onto=None, interp='linear'):
         idx = onto
 
     ts = (
-        pd.concat([series, pd.Series(index=idx)])
+        pd.concat([series, pd.Series(index=idx, dtype=series.dtype)])
         .sort_index(kind='mergesort')
         )
 

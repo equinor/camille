@@ -176,7 +176,7 @@ def test_no_dates_provided(tmpdir):
 def test_writing_empty_data(tmpdir):
     t0 = get_test_date(6)
     t1 = get_test_date(7)
-    ts = pd.Series()
+    ts = pd.Series(dtype='float64')
 
     files_before = get_files_count(tmpdir)
     generate_output(tmpdir, ts, t0, t1)
@@ -185,7 +185,7 @@ def test_writing_empty_data(tmpdir):
 
 
 def test_writing_empty_data_no_daterange(tmpdir):
-    ts = pd.Series()
+    ts = pd.Series(dtype='float64')
     files_before = get_files_count(tmpdir)
     generate_output(tmpdir, ts)
     files_after = get_files_count(tmpdir)
