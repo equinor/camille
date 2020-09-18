@@ -7,7 +7,6 @@ from datetime import datetime
 from itertools import cycle
 from pytz import utc
 from noise import pnoise2
-import numpy as np
 import os
 import pandas as pd
 

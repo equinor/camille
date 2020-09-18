@@ -2,8 +2,7 @@ from camille.source import Bazefetcher
 from camille.source import Zephyre
 from camille.util import utcdate
 from io import StringIO
-from unittest.mock import Mock, patch
-from urllib.parse import urlparse
+from unittest.mock import patch
 import datetime
 import pandas as pd
 import requests

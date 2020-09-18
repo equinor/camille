@@ -148,12 +148,13 @@ def test_snap_forward_within_file():
                      t1_2,
                      t1_2_0_1,
                      snap='right')
+    ref_dates = [
+        datetime(2030, 1, 2, 0, 0, tzinfo=utc),
+        datetime(2030, 1, 2, 22, 0, tzinfo=utc)
+    ]
+    assert (inst4.index == ref_dates).all()
+    assert (inst4 == [0, 1]).all()
 
-    assert ( inst4.index ==
-              [ datetime(2030, 1, 2, 0, 0, tzinfo=utc),
-                datetime(2030, 1, 2, 22, 0, tzinfo=utc) ]
-           ).all()
-    assert ( inst4 == [ 0, 1 ] ).all()
 
 snap_forward_outside_file_data = [(t12_31_22, t12_31_23), (t12_31_22, t1_1)]
 
@@ -172,12 +173,12 @@ def test_snap_both():
                      t1_2 + timedelta(seconds=1),
                      t1_2 + timedelta(seconds=2),
                      snap='both')
-
-    assert ( inst4.index ==
-              [ datetime(2030, 1, 2, 0, 0, tzinfo=utc),
-                datetime(2030, 1, 2, 22, 0, tzinfo=utc) ]
-           ).all()
-    assert ( inst4 == [ 0, 1 ] ).all()
+    ref_dates = [
+        datetime(2030, 1, 2, 0, 0, tzinfo=utc),
+        datetime(2030, 1, 2, 22, 0, tzinfo=utc)
+    ]
+    assert (inst4.index == ref_dates).all()
+    assert (inst4 == [0, 1]).all()
 
 
 def test_many_roots():

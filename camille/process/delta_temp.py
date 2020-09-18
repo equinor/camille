@@ -13,7 +13,6 @@ def process(amb, sea):
     pandas.Series
         Difference between provided series resampled per 20 minutes
     """
-    delta_temp  = sea.resample('20T').mean() - amb.resample('20T').mean()
+    delta_temp = sea.resample('20T').mean() - amb.resample('20T').mean()
     delta_temp.rename('delta_temp', inplace=True)
     return delta_temp
-

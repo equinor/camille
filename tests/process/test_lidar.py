@@ -1,6 +1,6 @@
 from camille.core import sample_hgt
 from datetime import datetime, timedelta
-from hypothesis import given, example, settings
+from hypothesis import given, settings
 from hypothesis.strategies import builds, floats, integers
 from itertools import count
 from math import acos, atan2, cos, pi, radians, sin, tan

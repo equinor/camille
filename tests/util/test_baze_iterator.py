@@ -3,7 +3,6 @@ from camille.source import Bazefetcher
 from datetime import datetime, timedelta
 from math import pi
 from pytz import utc
-import pytest
 import pandas as pd
 import numpy as np
 

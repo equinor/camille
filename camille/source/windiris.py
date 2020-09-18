@@ -37,7 +37,7 @@ def _sqlite(start_date,
         query_params.append(' "RWS Status" IN {} '.format(_to_string(status)))
 
     query = (
-        'SELECT * FROM ' + _to_string(installation) #nosec
+        'SELECT * FROM ' + _to_string(installation)  # nosec
         + ('' if len(query_params) == 0
            else ' WHERE ' + 'AND'.join(query_params))
         + ';'

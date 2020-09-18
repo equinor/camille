@@ -46,4 +46,3 @@ def write_csv_report(dict_report):
 
 if __name__ == '__main__':
     create_report()
-
