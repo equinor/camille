@@ -33,9 +33,15 @@ skbuild.setup(
     author_email='fg_gpl@equinor.com',
     description='Camille Wind',
     url='http://github.com/Statoil/camille',
-    install_requires=['numpy', 'pandas', 'scipy', 'rainflow'],
+    install_requires=['numpy', 'pandas', 'scipy', 'rainflow', 'requests'],
     test_suite='tests',
-    setup_requires=['pytest-runner', 'setuptools >=28', 'setuptools_scm', 'pybind11'],
+    setup_requires=[
+        'pytest-runner',
+        'setuptools >=28',
+        'setuptools_scm',
+        'cmake',
+        'pybind11',
+    ],
     tests_require=['pytest', 'pytest-repeat'],
     # we're building with the pybind11 fetched from pip. Since we don't rely on
     # a cmake-installed pybind there's also no find_package(pybind11) -
