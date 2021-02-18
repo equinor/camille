@@ -41,13 +41,13 @@ commands:
       - run:
           name: Install Python dependencies
           command: |
-            if [ `uname -s` == "Darwin" ]; then 
+            if [ `uname -s` == "Darwin" ]; then
               . py_venv/bin/activate
             fi
             python3 --version
             python3 -m pip install -r requirements.txt
             python3 -m pip install -r requirements-dev.txt
-            python3 -m pip install cmake flake8 bandit setuptools-scm 
+            python3 -m pip install cmake flake8 bandit setuptools-scm
             python3 -m pip install coverage codacy-coverage
 
   python-build-test:
@@ -55,7 +55,7 @@ commands:
       - run:
           name: Build & test python
           command: |
-            if [ `uname -s` == "Darwin" ]; then 
+            if [ `uname -s` == "Darwin" ]; then
               . py_venv/bin/activate
             fi
             python3 setup.py build_ext --inplace
@@ -87,7 +87,7 @@ commands:
       - run:
           name: Codacy code coverage check
           command: |
-            if [ ! -z "${CODACY_PROJECT_TOKEN}" ]; then 
+            if [ ! -z "${CODACY_PROJECT_TOKEN}" ]; then
               coverage run setup.py test;
               coverage xml;
               python-codacy-coverage -r coverage.xml;
@@ -153,7 +153,7 @@ jobs:
           python-version: << parameters.python-version >>
       - install-python-deps
       - python-build-test
-  
+
   sdist-deploy:
     docker:
       - image: "circleci/python:3.6"
@@ -239,7 +239,7 @@ workflows:
               only: /[0-9]+(\.[0-9]+)*/
             branches:
               ignore: /.*/
-  
+
   macos-deploy:
     jobs:
       - wheels-macos-deploy:
