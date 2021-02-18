@@ -29,7 +29,6 @@ def jsonify(tag, start_date, end_date):
 class MockResponse:
     def __init__(self, tag, start_date, end_date, status_code):
         self.json_bytes = jsonify(tag, start_date, end_date)
-        print(self.json_bytes[:4096])
         self.status_code = status_code
 
     def raise_for_status(self):
