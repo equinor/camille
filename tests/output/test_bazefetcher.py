@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from pytz import utc, timezone
 from camille.output import Bazefetcher as Bazeoutput
 from camille.source import Bazefetcher as Bazesource
+from camille.util import utcdate
 import numpy as np
 import os
 import pandas as pd
@@ -74,8 +75,8 @@ def get_test_fname(start_date, tag):
 
 
 def test_one_day_one_file(tmpdir):
-    t0 = datetime(2018, 1, 1, 10, tzinfo=utc)
-    t1 = datetime(2018, 1, 1, 13, tzinfo=utc)
+    t0 = utcdate(year=2018, month=1, day=1, hour=10)
+    t1 = utcdate(year=2018, month=1, day=1, hour=13)
 
     rng = pd.date_range(t0, t1, freq='H', name="time", closed='left')
     data = np.random.randn(len(rng))
@@ -89,8 +90,8 @@ def test_one_day_one_file(tmpdir):
 
 
 def test_two_days_two_files(tmpdir):
-    t0 = datetime(2018, 1, 31, 23, tzinfo=utc)
-    t1 = datetime(2018, 2, 1, 3, 1, tzinfo=utc)
+    t0 = utcdate(year=2018, month=1, day=31, hour=23)
+    t1 = utcdate(year=2018, month=2, day=1, hour=3, minute=1)
 
     rng = pd.date_range(t0, t1, freq='30T', name="time")
     data = np.array(range(9), dtype=np.int64)
@@ -193,9 +194,9 @@ def test_writing_empty_data_no_daterange(tmpdir):
 
 
 def test_multiple_writes_to_same_file(tmpdir):
-    t0 = datetime(2018, 1, 1, 5, tzinfo=utc)
-    t1 = datetime(2018, 1, 1, 10, tzinfo=utc)
-    t2 = datetime(2018, 1, 1, 15, tzinfo=utc)
+    t0 = utcdate(year=2018, month=1, day=1, hour=5)
+    t1 = utcdate(year=2018, month=1, day=1, hour=10)
+    t2 = utcdate(year=2018, month=1, day=1, hour=15)
 
     rng = pd.date_range(t0, t2, freq='H', name="time", closed='left')
     data = np.random.randn(len(rng))
@@ -210,10 +211,10 @@ def test_multiple_writes_to_same_file(tmpdir):
 
 
 def test_multiple_writes_to_same_file_fill(tmpdir):
-    t0 = datetime(2018, 1, 1, 5, tzinfo=utc)
-    t1 = datetime(2018, 1, 1, 10, tzinfo=utc)
-    t2 = datetime(2018, 1, 1, 15, tzinfo=utc)
-    t3 = datetime(2018, 1, 1, 20, tzinfo=utc)
+    t0 = utcdate(year=2018, month=1, day=1, hour=5)
+    t1 = utcdate(year=2018, month=1, day=1, hour=10)
+    t2 = utcdate(year=2018, month=1, day=1, hour=15)
+    t3 = utcdate(year=2018, month=1, day=1, hour=20)
 
     rng = pd.date_range(t0, t3, freq='H', name="time", closed='left')
     data = np.random.randn(len(rng))
@@ -239,10 +240,10 @@ def test_multiple_writes_to_same_file_fill(tmpdir):
 
 
 def test_multiple_writes_to_same_file_with_overlap_no_overwrite(tmpdir):
-    t0 = datetime(2018, 1, 1, 5, tzinfo=utc)
-    t1 = datetime(2018, 1, 1, 8, tzinfo=utc)
-    t2 = datetime(2018, 1, 1, 10, tzinfo=utc)
-    t3 = datetime(2018, 1, 1, 15, tzinfo=utc)
+    t0 = utcdate(year=2018, month=1, day=1, hour=5)
+    t1 = utcdate(year=2018, month=1, day=1, hour=8)
+    t2 = utcdate(year=2018, month=1, day=1, hour=10)
+    t3 = utcdate(year=2018, month=1, day=1, hour=15)
 
     rng = pd.date_range(t0, t3, freq='H', name="time", closed='left')
     data = np.random.randn(len(rng))
@@ -265,10 +266,10 @@ def test_multiple_writes_to_same_file_with_overlap_no_overwrite(tmpdir):
 
 
 def test_multiple_writes_to_same_file_with_right_overlap_overwrite(tmpdir):
-    t0 = datetime(2018, 1, 1, 5, tzinfo=utc)
-    t1 = datetime(2018, 1, 1, 8, tzinfo=utc)
-    t2 = datetime(2018, 1, 1, 10, tzinfo=utc)
-    t3 = datetime(2018, 1, 1, 15, tzinfo=utc)
+    t0 = utcdate(year=2018, month=1, day=1, hour=5)
+    t1 = utcdate(year=2018, month=1, day=1, hour=8)
+    t2 = utcdate(year=2018, month=1, day=1, hour=10)
+    t3 = utcdate(year=2018, month=1, day=1, hour=15)
 
     rng = pd.date_range(t0, t3, freq='H', name="time", closed='left')
     data = np.random.randn(len(rng))
@@ -288,10 +289,10 @@ def test_multiple_writes_to_same_file_with_right_overlap_overwrite(tmpdir):
 
 
 def test_multiple_writes_to_same_file_with_left_overlap_overwrite(tmpdir):
-    t0 = datetime(2018, 1, 1, 5, tzinfo=utc)
-    t1 = datetime(2018, 1, 1, 8, tzinfo=utc)
-    t2 = datetime(2018, 1, 1, 10, tzinfo=utc)
-    t3 = datetime(2018, 1, 1, 15, tzinfo=utc)
+    t0 = utcdate(year=2018, month=1, day=1, hour=5)
+    t1 = utcdate(year=2018, month=1, day=1, hour=8)
+    t2 = utcdate(year=2018, month=1, day=1, hour=10)
+    t3 = utcdate(year=2018, month=1, day=1, hour=15)
 
     rng = pd.date_range(t0, t3, freq='H', name="time", closed='left')
     data = np.random.randn(len(rng))
@@ -311,10 +312,10 @@ def test_multiple_writes_to_same_file_with_left_overlap_overwrite(tmpdir):
 
 
 def test_multiple_writes_to_same_file_with_internal_overlap_overwrite(tmpdir):
-    t0 = datetime(2018, 1, 1, 5, tzinfo=utc)
-    t1 = datetime(2018, 1, 1, 8, tzinfo=utc)
-    t2 = datetime(2018, 1, 1, 10, tzinfo=utc)
-    t3 = datetime(2018, 1, 1, 15, tzinfo=utc)
+    t0 = utcdate(year=2018, month=1, day=1, hour=5)
+    t1 = utcdate(year=2018, month=1, day=1, hour=8)
+    t2 = utcdate(year=2018, month=1, day=1, hour=10)
+    t3 = utcdate(year=2018, month=1, day=1, hour=15)
 
     rng = pd.date_range(t0, t3, freq='H', name="time", closed='left')
     data = np.random.randn(len(rng))
@@ -334,8 +335,8 @@ def test_multiple_writes_to_same_file_with_internal_overlap_overwrite(tmpdir):
 
 
 def test_multiple_writes_to_same_file_with_full_overlap_overwrite(tmpdir):
-    t0 = datetime(2018, 1, 1, 5, tzinfo=utc)
-    t1 = datetime(2018, 1, 1, 15, tzinfo=utc)
+    t0 = utcdate(year=2018, month=1, day=1, hour=5)
+    t1 = utcdate(year=2018, month=1, day=1, hour=15)
 
     rng = pd.date_range(t0, t1, freq='H', name="time", closed='left')
     data = np.random.randn(len(rng))

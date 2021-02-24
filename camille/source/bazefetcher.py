@@ -6,6 +6,8 @@ import pytz
 import pandas as pd
 from collections import abc
 from math import ceil
+from ..util import utcdate
+
 
 class TagNotFoundError(ValueError):
     pass
@@ -204,8 +206,8 @@ class Bazefetcher:
 
     def __call__(self,
                  tag,
-                 start_date=datetime.datetime(1677, 9, 22, tzinfo=pytz.utc),
-                 end_date=datetime.datetime(2262, 4, 11, tzinfo=pytz.utc),
+                 start_date=utcdate(year=1677, month=9, day=22),
+                 end_date=utcdate(year=2262, month=4, day=11),
                  snap=None):
         """
         Parameters
