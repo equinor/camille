@@ -238,7 +238,6 @@ def test_multiple_writes_to_same_file_fill(tmpdir):
     assert_correct_raw_values(expected, tmpdir, t0)
 
 
-
 def test_multiple_writes_to_same_file_with_overlap_no_overwrite(tmpdir):
     t0 = utcdate(year=2018, month=1, day=1, hour=5)
     t1 = utcdate(year=2018, month=1, day=1, hour=8)
