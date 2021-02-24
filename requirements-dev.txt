@@ -1,4 +1,4 @@
-#pytest==3.10.1
+pytest>=6.2.2
 pytest-repeat
 hypothesis
 scikit-build
