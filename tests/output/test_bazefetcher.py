@@ -16,7 +16,7 @@ def assert_correctly_loaded(expected, basedir, t0, t1, tag="test",
 
     new_index = result.index.tz_convert(tzinfo)
     result = result.reindex(new_index)
-    pd.testing.assert_series_equal(expected, result)
+    pd.testing.assert_series_equal(expected, result, check_freq=False)
 
 
 def assert_correct_index(expected_index, basedir, start_date, end_date,

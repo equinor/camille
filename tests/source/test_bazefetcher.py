@@ -44,7 +44,7 @@ def tan(t0=t1_1, tn=t1_5):
     return _tan[t0:tn - eps]
 
 def assert_correct(v, func, t0, t1):
-    pd.testing.assert_series_equal(v, func(t0, t1))
+    pd.testing.assert_series_equal(v, func(t0, t1), check_freq=False)
     assert v.index[0] == t0
     assert v.index[-1] < t1
     assert (t1 - v.index[-1]).to_pytimedelta() < timedelta(seconds=20)
@@ -53,8 +53,8 @@ def test_read_two_days():
     sin_b = baze('Sin-T60s-SR01hz', t1_2, t1_4)
     tan_b = baze('Tan-T60s-SR01hz', t1_2, t1_4)
     assert len(sin_b) == len(tan_b) == 17280 # 2 days
-    pd.testing.assert_series_equal(sin_b, sin(t1_2, t1_4))
-    pd.testing.assert_series_equal(tan_b, tan(t1_2, t1_4))
+    pd.testing.assert_series_equal(sin_b, sin(t1_2, t1_4), check_freq=False)
+    pd.testing.assert_series_equal(tan_b, tan(t1_2, t1_4), check_freq=False)
     assert sin_b.index[0] == t1_2
     assert sin_b.index[-1] < t1_4
     assert (t1_4 - sin_b.index[-1]).to_pytimedelta() < timedelta(seconds=20)
@@ -220,7 +220,7 @@ def test_many_roots_same_filename():
 def test_no_time_boundaries():
     sin_b = baze('Sin-T60s-SR01hz')
     assert len(sin_b) == 34560 # 4 days
-    pd.testing.assert_series_equal(sin_b, sin(t1_1, t1_5))
+    pd.testing.assert_series_equal(sin_b, sin(t1_1, t1_5), check_freq=False)
     assert sin_b.index[0] == t1_1
     assert sin_b.index[-1] < t1_5
     assert (t1_1 - sin_b.index[-1]).to_pytimedelta() < timedelta(seconds=20)
@@ -250,7 +250,7 @@ def test_load_err_file():
 def test_load_special_regex_file():
     sin_data = non_standard('tag-with+plus-sign')
     assert len(sin_data) == 34560  # 4 days
-    pd.testing.assert_series_equal(sin_data, sin(t1_1, t1_5))
+    pd.testing.assert_series_equal(sin_data, sin(t1_1, t1_5), check_freq=False)
 
 
 def test_load_bad_format_file():

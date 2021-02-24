@@ -36,42 +36,42 @@ def cos(t0=t1, tn=t4): return _cos[t0:tn - eps]
 def test_BazeIter():
     for data, s, e in baze.create_iterator(sin_tag, t1, t2):
         assert len(data) == 8640
-        pd.testing.assert_series_equal(data, sin(s, e))
+        pd.testing.assert_series_equal(data, sin(s, e), check_freq=False)
 
 
 def test_BazeIter_tag_list():
     for data, s, e in baze.create_iterator([sin_tag, cos_tag], t1, t2):
         assert len(data[sin_tag]) == 8640
-        pd.testing.assert_series_equal(data[sin_tag], sin(s, e))
-        pd.testing.assert_series_equal(data[cos_tag], cos(s, e))
+        pd.testing.assert_series_equal(data[sin_tag], sin(s, e), check_freq=False)
+        pd.testing.assert_series_equal(data[cos_tag], cos(s, e), check_freq=False)
 
 
 def test_left_padding():
     padding = timedelta(hours=1)
     for data, s, e in baze.create_iterator(sin_tag, t2, t3, padding=padding):
         assert len(data) == 9000
-        pd.testing.assert_series_equal(data, sin(s - padding, e))
+        pd.testing.assert_series_equal(data, sin(s - padding, e), check_freq=False)
 
 
 def test_left_integer_padding():
     padding = 360 * 25
     for data, s, e in baze.create_iterator(sin_tag, t3, t4, padding=padding):
         assert len(data) == 8640 + padding
-        pd.testing.assert_series_equal(data, sin(s - timedelta(hours=25), e))
+        pd.testing.assert_series_equal(data, sin(s - timedelta(hours=25), e), check_freq=False)
 
 
 def test_right_padding():
     padding = timedelta(hours=1)
     for data, s, e in baze.create_iterator(sin_tag, t2, t3, padding=padding, leftpad=False, rightpad=True):
         assert len(data) == 9000
-        pd.testing.assert_series_equal(data, sin(s, e + padding))
+        pd.testing.assert_series_equal(data, sin(s, e + padding), check_freq=False)
 
 
 def test_right_integer_padding():
     padding = 360 * 25
     for data, s, e in baze.create_iterator(sin_tag, t1, t2, padding=padding, leftpad=False, rightpad=True):
         assert len(data) == 8640 + padding
-        pd.testing.assert_series_equal(data, sin(s, e + timedelta(hours=25)))
+        pd.testing.assert_series_equal(data, sin(s, e + timedelta(hours=25)), check_freq=False)
 
 
 def test_non_one_day_interval():
@@ -95,7 +95,7 @@ def test_non_midnight_date():
     t2 = datetime(2030, 1, 2, 11, tzinfo=utc)
     for data, s, e in baze.create_iterator(sin_tag, t1, t2, timedelta(hours=1)):
         assert len(data) == 360
-        pd.testing.assert_series_equal(data, sin(s, e))
+        pd.testing.assert_series_equal(data, sin(s, e), check_freq=False)
 
 
 def test_interval_not_fitting_range():
