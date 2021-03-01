@@ -11,14 +11,34 @@ namespace py = pybind11;
 static const auto dense = py::array::c_style | py::array::forcecast;
 
 namespace {
+
+struct vec2 {
+    double x;
+    double y;
+};
+
+struct vec3 {
+    double x;
+    double y;
+    double z;
+};
+
+struct euler_angles {
+    double pitch;
+    double roll;
+    double yaw;
+};
+
 namespace lidar {
 
 struct sample {
     std::uint64_t time;
     int los_id;
     double rws;
-    double pitch;
-    double roll;
+    vec3 translation;
+    euler_angles rotation;
+    vec3 velocity;
+    euler_angles angular_velocity;
     int status;
 };
 
@@ -55,15 +75,15 @@ struct windfield_desc {
     double get_hgt_lwr()     const noexcept { return lower.hgt; }
 };
 
-static const auto sample_hgt_docstring = R"(
+static const auto sample_pos_docstring = R"(
 Parameters
 ----------
-hub_hgt : float
-    Nacelle hub height
 lidar_hgt : float
     Height of the LiDAR
 dist : float
     Measurement distance
+heave : float
+    Vertical offset due to structure motion
 pitch : float
 roll : float
 azm : float
@@ -73,26 +93,72 @@ zn : float
 
 Returns
 -------
-float
-    Height of the beam at distance `dist`
+tuple
+    Position of the beam at distance `dist`
 )";
 
-double sample_hgt(double lidar_hgt,
-                  double dist,
-                  double pitch,
-                  double roll,
-                  double azm,
-                  double zn) noexcept {
+vec3 sample_pos(double lidar_hgt,
+                double dist,
+                double heave,
+                double surge,
+                double pitch,
+                double roll,
+                double azm,
+                double zn) noexcept {
     using std::sin;
     using std::cos;
+    dist = dist / cos(zn);
+    return {
+        cos(pitch) * dist * cos(zn) +
+        sin(pitch) * sin(zn) * dist * (sin(roll) * cos(azm) -
+        cos(roll) * sin(azm)) - sin(pitch) * cos(roll) * lidar_hgt + surge,
 
-    // double scale = (cos(zn) * sin(pitch) +
-    //                -sin(zn) * cos(azm) * cos(pitch) * sin(roll) +
-    //                 sin(zn) * sin(azm) * cos(pitch) * cos(roll));
-    // The above collapsed to this:
-    double magic = azm - roll;
-    double scale = sin(zn) * cos(pitch) * sin(magic) + cos(zn) * sin(pitch);
-    return lidar_hgt + (dist / cos(zn)) * scale;
+        sin(zn) * dist * (cos(roll) * cos(azm) + sin(roll) * sin(azm)) +
+        sin(roll) * lidar_hgt,
+
+        sin(pitch) * dist * cos(zn) +
+        cos(pitch) * sin(zn) * dist * (cos(roll) * sin(azm) -
+        sin(roll) * cos(azm)) + cos(pitch) * cos(roll) * lidar_hgt + heave
+    };
+}
+
+std::tuple<double, double, double> py_sample_pos(double lidar_hgt,
+                                                 double dist,
+                                                 double heave,
+                                                 double surge,
+                                                 double pitch,
+                                                 double roll,
+                                                 double azm,
+                                                 double zn) noexcept {
+    const auto [x, y, z] = sample_pos(lidar_hgt, dist, heave, surge, pitch,
+                                      roll, azm, zn);
+    return {x, y, z};
+}
+
+static const auto inertial_reference_frame_docstring = R"(
+Parameters
+----------
+velocity : vec3
+angular_velocity : euler_angles
+position : vec3
+
+Returns
+-------
+vec3
+    Movement of the beam's inertial reference frame
+)";
+
+vec3 inertial_reference_frame(vec3 velocity,
+                              euler_angles angular_velocity,
+                              vec3 position) {
+    const auto [deltax, deltay, deltaz] = velocity;
+    const auto [w_pitch, w_roll, w_yaw] = angular_velocity;
+    const auto [x, y, z] = position;
+    return {
+        deltax + (w_yaw * y - w_pitch * z),
+        deltay + (w_roll * z - w_yaw * x),
+        deltaz + (w_pitch * x - w_roll * y),
+    };
 }
 
 static const auto shear_docstring = R"(
@@ -152,6 +218,7 @@ double veer(double dir_upr,
             double dir_lwr,
             double hgt_upr,
             double hgt_lwr) noexcept {
+
     return (dir_upr - dir_lwr) / (hgt_upr - hgt_lwr);
 }
 
@@ -162,10 +229,10 @@ The  vector and  orientation  of  the  beams are  given  by the pitch, roll,
 zeniths  and azimuths. Measured wind speeds are  given as  radial wind speed
 (RWS), that is the actual wind vector as projected onto the beam vector. The
 calculation is done by solving the following equations for V, where V is the
-wind vector:
+wind vector. Ia and Ib are the beams' respective inertial reference frames.
 
-RWSa = R . La . V
-RWSb = R . Lb . V
+RWSa = R . La . (V - Ia)
+RWSb = R . Lb . (V - Ib)
 
 R is  the rotational  matrix Ry(pitch)  .  Rx(roll),  and  L are the LOS, or
 Line-Of-Sights, for beam a and b. The beam vector (RL) is given by:
@@ -177,23 +244,26 @@ RL = R . L = |   0    1    0    | | 0  cos r   sin r | | sin zn * cos azm |
 
 Because the wind speed is projected onto the beam, RL, we have:
 
-           | Vx |
-RWS = RL . | Vy |
-           | Vz |
+           | Vx - Ix |
+RWS = RL . | Vy - Iy |
+           | Vz - Iz |
 
 If we assume Vz to be 0, we get:
 
-RWSa = RLa_x * Vx + RLa_y * Vy
-     = a * Vx + b * Vy
-RWSb = RLb_x * Vx + RLb_y * Vy
-     = c * Vx + d * Vy
+RWSa = RLa_x * (Vx - Ix_a) + RLa_y * (Vy - Iy_a) - RLa_z * Iz_a
+     = a0 * (Vx - Ix_a) + a1 * (Vy - Iy_a) - a2 * Iz_a
+RWSb = RLb_x * (Vx - Ix_b) + RLb_y * (Vy - Iy_b) - RLb_z * Iz_b
+     = b0 * (Vx - Ix_b) + b1 * (Vy - Iy_b) - b2 * Iz_b
 
-Note that we rename RLa_x, RLa_y, RLb_x, and RLb_y to a, b, c, and d.
+Note that we rename RLa_x, RLa_y, RLa_z, RLb_x, RLa_y and RLb_z
+to a0, a1, a2, b0, b1, and b2.
 
 Solving for Vx and Vy gives us:
 
-Vx = (b * RWSb - d * RWSa) / (b * c - d * a)
-Vy = (RWSa - a * Vx) / b
+Vx = (a0 * b1 * Ix_a - a1 * b0 * Ix_b + a1 * b1 * (Iy_a - Iy_b) -
+      a1 * b2 * Iz_b + a2 * b1 * Iz_a - a1 * RWS_b + b1 * RWS_a) /
+     (a0 * b1 - a1 * b0)
+Vy = (RWS_a - a0 * (Vx - Ix_a) + a2 * Iz_a) / a1 + Iy_a
 
 The coordinate system is left-handed, X-forward, Y-right and Z-up.
 
@@ -203,8 +273,101 @@ rws_a : float
     Measured radial wind speed a
 rws_b : float
     Measured radial wind speed b
-pitch : float
-roll : float
+rotation : euler_angles
+    Yaw is assumed to be 0
+azm_a : float
+    Line-of-sight a azimuth
+azm_b : float
+    Line-of-sight b azimuth
+zn_a : float
+    Line-of-sight a zenith
+zn_b : float
+    Line-of-sight b zenith
+inertial_reference_frame_a : vec3
+    Inertial reference frame of beam a
+inertial_reference_frame_b : vec3
+    Inertial reference frame of beam b
+
+Returns
+-------
+vec2
+    Planar wind speed reconstructed from rws_a and rws_b
+)";
+
+vec2 planar_windspeed(double rws_a,
+                      double rws_b,
+                      euler_angles rotation,
+                      double azm_a,
+                      double azm_b,
+                      double zn_a,
+                      double zn_b,
+                      vec3 inertial_reference_frame_a,
+                      vec3 inertial_reference_frame_b) noexcept {
+    using std::sin;
+    using std::cos;
+    const auto [pitch, roll, yaw] = rotation;
+    const auto [Ix_a, Iy_a, Iz_a] = inertial_reference_frame_a;
+    const auto [Ix_b, Iy_b, Iz_b] = inertial_reference_frame_b;
+
+    double a0 = cos(pitch) * cos(zn_a) +
+                cos(azm_a) * sin(pitch) * sin(roll) * sin(zn_a) -
+                cos(roll)  * sin(pitch) * sin(zn_a) * sin(azm_a);
+
+    double a1 = cos(roll) * cos(azm_a) * sin(zn_a) +
+                sin(roll) * sin(zn_a)  * sin(azm_a);
+
+    double a2 = cos(zn_a) * sin(pitch) -
+                cos(pitch) * cos(azm_a) * sin(roll) * sin(zn_a) +
+                cos(pitch) * cos(roll) * sin(zn_a) * sin(azm_a);
+
+    double b0 = cos(pitch) * cos(zn_b) +
+                cos(azm_b) * sin(pitch) * sin(roll) * sin(zn_b) -
+                cos(roll)  * sin(pitch) * sin(zn_b) * sin(azm_b);
+
+    double b1 = cos(roll) * cos(azm_b) * sin(zn_b) +
+                sin(roll) * sin(zn_b)  * sin(azm_b);
+
+    double b2 = cos(zn_b) * sin(pitch) -
+                cos(pitch) * cos(azm_b) * sin(roll) * sin(zn_b) +
+                cos(pitch) * cos(roll) * sin(zn_b) * sin(azm_b);
+
+    double x = (a0 * b1 * Ix_a - a1 * b0 * Ix_b + a1 * b1 * (Iy_a - Iy_b) -
+                a1 * b2 * Iz_b + a2 * b1 * Iz_a - a1 * rws_b + b1 * rws_a) /
+               (a0 * b1 - a1 * b0);
+
+    double y = (rws_a - a0 * (x - Ix_a) + a2 * Iz_a) / a1 + Iy_a;
+
+    return {x, y};
+}
+
+static const auto calc_plane_desc_docstring = R"(
+Calculates the windfield of a horizontal plane given two beams, a and b. a
+being the leftmost beam and b the rightmost as seen from behind the LiDAR.
+The description of the windfield comprises the total wind speed, its magnitude
+in x- and y-direction, the direction of the wind vector and the height of
+measurement. 
+
+The translational dislocations heave and surge, the angular dislocations pitch
+and roll as well as all translational and angular velocities are averaged
+between the two beams.
+
+The measurement position and inertial reference frame are calculated for each
+beam and the respective coordinates are extracted. They determine the planar
+windspeed whose contributions in x- and y-direction define the windfield's
+attributes.
+
+The coordinate system is left-handed, X-forward, Y-right and Z-up.
+
+Parameters
+----------
+beam_a : struct
+    Description of beam a
+beam_b : struct
+    Description of beam b
+dist : float
+    Measurement distance
+lidar_hgt : float
+    (fixed)
 azm_a : float
     Line-of-sight a azimuth
 azm_b : float
@@ -216,40 +379,9 @@ zn_b : float
 
 Returns
 -------
-float
-    Planar wind speed reconstructed from rws_a and rws_b
+struct
+    Windfield in a horizontal plane between the two beams
 )";
-
-std::tuple<double, double> planar_windspeed(double rws_a,
-                                            double rws_b,
-                                            double pitch,
-                                            double roll,
-                                            double azm_a,
-                                            double azm_b,
-                                            double zn_a,
-                                            double zn_b) noexcept {
-    using std::sin;
-    using std::cos;
-
-    double a = cos(pitch) * cos(zn_a) +
-               cos(azm_a) * sin(pitch) * sin(roll) * sin(zn_a) -
-               cos(roll)  * sin(pitch) * sin(zn_a) * sin(azm_a);
-
-    double b = cos(roll) * cos(azm_a) * sin(zn_a) +
-               sin(roll) * sin(zn_a)  * sin(azm_a);
-
-    double c = cos(pitch) * cos(zn_b) +
-               cos(azm_b) * sin(pitch) * sin(roll) * sin(zn_b) -
-               cos(roll)  * sin(pitch) * sin(zn_b) * sin(azm_b);
-
-    double d = cos(roll) * cos(azm_b) * sin(zn_b) +
-               sin(roll) * sin(zn_b) * sin(azm_b);
-
-    double x = (b * rws_b - d * rws_a) / (b * c - d * a);
-    double y = (rws_a - a * x) / b;
-
-    return std::make_tuple(x, y);
-}
 
 planar_desc calc_plane_desc(const sample& beam_a,
                             const sample& beam_b,
@@ -275,28 +407,80 @@ planar_desc calc_plane_desc(const sample& beam_a,
         return desc;
     }
 
-    double pitch = (beam_a.pitch + beam_b.pitch) / 2.0;
-    double roll = (beam_a.roll + beam_b.roll) / 2.0;
+    const euler_angles rotation = {
+        (beam_a.rotation.pitch + beam_b.rotation.pitch) / 2.0,
+        (beam_a.rotation.roll + beam_b.rotation.roll) / 2.0,
+        0.0
+    };
 
-    double hgt_a = sample_hgt(lidar_hgt, dist, pitch, roll, azm_a, zn_a);
-    double hgt_b = sample_hgt(lidar_hgt, dist, pitch, roll, azm_b, zn_b);
-    double hgt = (hgt_a + hgt_b) / 2.0;
+    const auto pos_a = sample_pos(lidar_hgt,
+                                  dist,
+                                  beam_a.translation.z,
+                                  beam_a.translation.x,
+                                  beam_a.rotation.pitch,
+                                  beam_a.rotation.roll,
+                                  azm_a,
+                                  zn_a);
+    const auto pos_b = sample_pos(lidar_hgt,
+                                  dist,
+                                  beam_b.translation.z,
+                                  beam_b.translation.x,
+                                  beam_b.rotation.pitch,
+                                  beam_b.rotation.roll,
+                                  azm_b,
+                                  zn_b);
 
-    auto vec = planar_windspeed(
-        beam_a.rws, beam_b.rws, pitch, roll, azm_a, azm_b, zn_a, zn_b);
+    const auto I_a = inertial_reference_frame(beam_a.velocity,
+                                              beam_a.angular_velocity,
+                                              pos_a);
+    const auto I_b = inertial_reference_frame(beam_b.velocity,
+                                              beam_b.angular_velocity,
+                                              pos_b);
 
-    double x = std::get<0>(vec);
-    double y = std::get<1>(vec);
-    double speed = sqrt(x * x + y * y);
-    double dir = atan2(y / speed, x / speed);
+    const auto [wind_x, wind_y] = planar_windspeed(
+        beam_a.rws, beam_b.rws, rotation, azm_a, azm_b, zn_a, zn_b, I_a, I_b);
+
+    const auto speed = sqrt(wind_x * wind_x + wind_y * wind_y);
+    const auto dir = atan2(wind_y, wind_x);
 
     desc.spd = speed;
     desc.dir = dir;
-    desc.x = x;
-    desc.y = y;
-    desc.hgt = hgt;
+    desc.x = wind_x;
+    desc.y = wind_y;
+    desc.hgt = (pos_a.z + pos_b.z) / 2.0;
     return desc;
 }
+
+static const auto calc_windfield_desc_docstring = R"(
+Calculates the windfield at the moment in question, given the planar wind
+descriptions of the upper and lower set of beams.
+
+The windfield's shear and veer are reconstructed from wind speed, wind direction
+in and height of both planes.
+
+The coordinate system is left-handed, X-forward, Y-right and Z-up.
+
+Parameters
+----------
+time : uint64_t
+    Timestamp
+beam : array of four structs
+    Upper right, upper left, lower right and lower left beam
+    Beams are ordered
+distance : float
+    Measurement distance
+lidar_hgt : float
+    (fixed)
+azimuths : array of four floats
+    Line-of-sight azimuth of the respective beam
+zeniths : array of four floats
+    Line-of-sight zenith of the respective beam
+
+Returns
+-------
+struct
+    Extrapolated windfield with shear and veer
+)";
 
 windfield_desc calc_windfield_desc(
         const std::uint64_t time,
@@ -329,7 +513,6 @@ windfield_desc calc_windfield_desc(
         wf_desc.veer = veer(wf_desc.upper.dir, wf_desc.lower.dir,
                             wf_desc.upper.hgt, wf_desc.lower.hgt);
     }
-
     return wf_desc;
 }
 
@@ -348,12 +531,11 @@ T* checked_ptr(py::array_t<T, dense>& in,
         std::string msg = "All columns must be one dimensional";
         throw std::invalid_argument(msg);
     }
-
     return static_cast< T* >(desc.ptr);
 }
 
-bool create_window(const std::array<sample, 4>& b,
-                   std::array<sample, 4>& win) noexcept {
+bool validate_and_sort_samples(const std::array<sample, 4>& b,
+                               std::array<sample, 4>& win) noexcept {
     auto valid_los_id = [](const sample& s){
         return 0 <= s.los_id && s.los_id < 4;
     };
@@ -402,8 +584,16 @@ auto mkcol(F fn, const std::vector<windfield_desc>& wf_descs) noexcept
 py::dict core_windfield_desc(py::array_t<std::uint64_t, dense> time,
                              py::array_t<int, dense> los_id,
                              py::array_t<double, dense> rws,
+                             py::array_t<double, dense> heave,
+                             py::array_t<double, dense> surge,
                              py::array_t<double, dense> pitch,
                              py::array_t<double, dense> roll,
+                             py::array_t<double, dense> surge_velocity,
+                             py::array_t<double, dense> sway_velocity,
+                             py::array_t<double, dense> heave_velocity,
+                             py::array_t<double, dense> pitch_velocity,
+                             py::array_t<double, dense> roll_velocity,
+                             py::array_t<double, dense> yaw_velocity,
                              py::array_t<int, dense> status,
                              const double distance,
                              const double lidar_hgt,
@@ -417,18 +607,40 @@ py::dict core_windfield_desc(py::array_t<std::uint64_t, dense> time,
     const auto* timep   = static_cast< std::uint64_t* >(time_desc.ptr);
     const auto* los_idp = checked_ptr(los_id, 1, time_desc.shape);
     const auto* rwsp    = checked_ptr(rws,    1, time_desc.shape);
+    const auto* heavep  = checked_ptr(heave,  1, time_desc.shape);
+    const auto* surgep  = checked_ptr(surge,  1, time_desc.shape);
     const auto* pitchp  = checked_ptr(pitch,  1, time_desc.shape);
     const auto* rollp   = checked_ptr(roll,   1, time_desc.shape);
+    const auto* surge_velocityp = checked_ptr(surge_velocity, 1, time_desc.shape);
+    const auto* sway_velocityp = checked_ptr(sway_velocity, 1, time_desc.shape);
+    const auto* heave_velocityp = checked_ptr(heave_velocity, 1, time_desc.shape);
+    const auto* pitch_velocityp = checked_ptr(pitch_velocity, 1, time_desc.shape);
+    const auto* roll_velocityp = checked_ptr(roll_velocity, 1, time_desc.shape);
+    const auto* yaw_velocityp = checked_ptr(yaw_velocity, 1, time_desc.shape);
     const auto* statusp = checked_ptr(status, 1, time_desc.shape);
 
     std::vector<sample> beam(len);
     for (int i = 0; i < len; i ++) {
-        beam[i].time   = timep[i];
-        beam[i].los_id = los_idp[i];
-        beam[i].rws    = rwsp[i];
-        beam[i].pitch  = pitchp[i];
-        beam[i].roll   = rollp[i];
-        beam[i].status = statusp[i];
+        beam[i].time             = timep[i];
+        beam[i].los_id           = los_idp[i];
+        beam[i].rws              = rwsp[i];
+        beam[i].translation      = { surgep[i]
+                                   , 0.0
+                                   , heavep[i]
+                                   };
+        beam[i].rotation         = { pitchp[i]
+                                   , rollp[i]
+                                   , 0.0
+                                   };
+        beam[i].velocity         = { surge_velocityp[i]
+                                   , sway_velocityp[i]
+                                   , heave_velocityp[i]
+                                   };
+        beam[i].angular_velocity = { pitch_velocityp[i]
+                                   , roll_velocityp[i]
+                                   , yaw_velocityp[i]
+                                   };
+        beam[i].status           = statusp[i];
     }
 
     std::vector<windfield_desc> wf_descs;
@@ -436,11 +648,10 @@ py::dict core_windfield_desc(py::array_t<std::uint64_t, dense> time,
         const std::array<sample, 4> b = {
             beam[i], beam[i + 1], beam[i + 2], beam[i + 3],
         };
-
         const std::uint64_t time = b[0].time;
 
         std::array<sample, 4> window;
-        if (!create_window(b, window)) {
+        if (!validate_and_sort_samples(b, window)) {
             continue;
         }
 
@@ -453,6 +664,7 @@ py::dict core_windfield_desc(py::array_t<std::uint64_t, dense> time,
     }
 
     using wfi = windfield_desc;
+
     auto d = py::dict();
     d["time"]       = mkcol(std::mem_fn(&wfi::get_time),       wf_descs);
     d["shear"]      = mkcol(std::mem_fn(&wfi::get_shear),      wf_descs);
@@ -476,7 +688,7 @@ py::dict core_windfield_desc(py::array_t<std::uint64_t, dense> time,
 } // ^ anonymous namespace
 
 PYBIND11_MODULE(core, m) {
-    m.def("sample_hgt", lidar::sample_hgt,
-                        lidar::sample_hgt_docstring);
+    m.def("sample_pos", lidar::py_sample_pos,
+                        lidar::sample_pos_docstring);
     m.def("core_windfield_desc", lidar::core_windfield_desc);
 }

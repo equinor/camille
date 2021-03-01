@@ -1,4 +1,4 @@
-from camille.core import sample_hgt
+from camille.core import sample_pos
 from datetime import datetime, timedelta
 from hypothesis import given, settings
 from hypothesis.strategies import builds, floats, integers
@@ -19,35 +19,86 @@ lidar_hgt = 100
 
 
 class lidar_simulator:
-    def __init__(self, pitch=0, roll=0):
+    def __init__(self, pitch=0, roll=0, surge=0, heave=0,
+                 surge_velocity=0, sway_velocity=0, heave_velocity=0,
+                 pitch_velocity=0, roll_velocity=0, yaw_velocity=0):
         self.pitch = pitch
         self.roll = roll
+        self.surge = surge
+        self.heave = heave
+        self.surge_velocity = surge_velocity
+        self.sway_velocity = sway_velocity
+        self.heave_velocity = heave_velocity
+        self.pitch_velocity = pitch_velocity
+        self.roll_velocity = roll_velocity
+        self.yaw_velocity = yaw_velocity
 
     def __call__(self, windfield, timestamp, distance, beam):
         d = distance / cos(zenith[beam])
-        z = zenith[beam]
-        a = azimuth[beam]
+        zn = zenith[beam]
+        az = azimuth[beam]
         p = self.pitch
         r = self.roll
-        rot = np.array([[cos(p),  sin(p) * sin(r), -sin(p) * cos(r)],
-                        [     0,           cos(r),           sin(r)],
-                        [sin(p), -cos(p) * sin(r),  cos(p) * cos(r)]])
-        los = rot @ np.array([cos(z),
-                              sin(z) * cos(a),
-                              sin(z) * sin(a)])
-        loc = los * d
-        loc[2] += lidar_hgt
+        surge = self.surge
+        heave = self.heave
 
+        T_local = np.array([[1, 0, 0,         0],
+                            [0, 1, 0,         0],
+                            [0, 0, 1, lidar_hgt],
+                            [0, 0, 0,         1]])
+        R_world = np.array([[cos(p),  sin(p) * sin(r), -sin(p) * cos(r), 0],
+                            [     0,           cos(r),           sin(r), 0],
+                            [sin(p), -cos(p) * sin(r),  cos(p) * cos(r), 0],
+                            [     0,                0,                0, 1]])
+        T_world = np.array([[1, 0, 0, surge],
+                            [0, 1, 0,     0],
+                            [0, 0, 1, heave],
+                            [0, 0, 0,     1]])
+        Transform = T_world @ R_world @ T_local
+
+        L = np.array([cos(zn),
+                      sin(zn) * cos(az),
+                      sin(zn) * sin(az),
+                      0])
+        P = d * L + np.array([0, 0, 0, 1])
+
+        line_of_sight_direction = Transform @ L
+        measurement_position = Transform @ P
+
+        I = np.array([self.surge_velocity, self.sway_velocity,
+                      self.heave_velocity])
+
+        Iw = -np.cross(np.array([self.roll_velocity,
+                                 self.pitch_velocity,
+                                 self.yaw_velocity]),
+                       np.array([measurement_position[0],
+                                 measurement_position[1],
+                                 measurement_position[2]]))
         # Sanity check
-        assert loc[2] == approx(sample_hgt(lidar_hgt, distance, p, r, a, z))
+        _ = sample_pos(lidar_hgt, distance, heave, surge, p, r, az, zn)
 
-        _, wnd = windfield(loc)
-        rws = np.dot(-wnd, los)
+        assert measurement_position[0] == approx(_[0])
+        assert measurement_position[1] == approx(_[1])
+        assert measurement_position[2] == approx(_[2])
 
-        return timestamp, beam, rws, 1, self.pitch, self.roll
+        _, wnd = windfield(measurement_position, inertial_frame=I + Iw)
+        rws = np.dot(-wnd, line_of_sight_direction[:3])
+
+        status = 1
+        return (timestamp, beam, rws, status, self.surge, self.heave,
+                self.pitch, self.roll, self.surge_velocity, self.sway_velocity,
+                self.heave_velocity, self.pitch_velocity, self.roll_velocity,
+                self.yaw_velocity)
 
     def __repr__(self):
-        return 'lidar_simulator({}, {})'.format(self.pitch, self.roll)
+        return (f'lidar_simulator(surge={self.surge}, heave={self.heave}, '
+                f'pitch={self.pitch}, roll={self.roll}, '
+                f'surge_velocity={self.surge_velocity}, '
+                f'sway_velocity={self.sway_velocity}, '
+                f'heave_velocity={self.heave_velocity}, '
+                f'pitch_velocity={self.pitch_velocity}, '
+                f'roll_velocity={self.roll_velocity}, '
+                f'yaw_velocity={self.yaw_velocity})')
 
 
 class windfield_function:
@@ -57,14 +108,19 @@ class windfield_function:
         self.shear = shear
         self.veer = veer
 
-    def __call__(self, pnt):
+    def __call__(self, pnt, inertial_frame=None):
         hgt = pnt[2]
-        u = self.ref_speed * pow(hgt / lidar_hgt, self.shear)
+        spd = self.ref_speed * pow(hgt / lidar_hgt, self.shear)
         veer_offset = self.veer * (lidar_hgt - hgt)
-        rot = np.array([[ cos(veer_offset), sin(veer_offset), 0],
-                        [-sin(veer_offset), cos(veer_offset), 0],
-                        [                0,                0, 1]])
-        return u, rot @ self.direction * u
+        R = np.array([[cos(veer_offset), sin(veer_offset),  0],
+                      [-sin(veer_offset), cos(veer_offset), 0],
+                      [                0,                0, 1]])
+        V = R @ self.direction * spd
+        if inertial_frame is not None:
+            # The wind vector is negative from the lidar's point of view.
+            inertial_frame = -inertial_frame
+            V -= inertial_frame
+        return spd, V
 
     def __repr__(self):
         return (
@@ -85,18 +141,17 @@ def generate_input(windfield,
                    distance,
                    n=4,
                    start_date=datetime(2030, 1, 1, 12, tzinfo=utc)):
-
     df = pd.DataFrame(columns=[
-        'los_id', 'radial_windspeed', 'status', 'pitch', 'roll'
+        'los_id', 'radial_windspeed', 'status', 'surge', 'heave', 'pitch',
+        'roll', 'surge_velocity', 'sway_velocity', 'heave_velocity',
+        'pitch_velocity', 'roll_velocity', 'yaw_velocity'
     ])
 
     time = (start_date + timedelta(seconds=1) * i for i in range(n))
     beam = (i % 4 for i in count())
-
     for t, b in zip(time, beam):
-        timestamp, los_id, radial_windspeed, status, pitch, roll = (
-            lidar(windfield, t, distance, b))
-        df.loc[timestamp] = los_id, radial_windspeed, status, pitch, roll
+        timestamp, *xs = lidar(windfield, t, distance, b)
+        df.loc[timestamp] = xs
     return distance, windfield, lidar, df
 
 
@@ -108,21 +163,25 @@ distances = integers(min_value=50, max_value=400)
 directions = builds(uniform_dir, floats(min_value=-pi / 4, max_value=pi / 4))
 angles = floats(min_value=-0.0872665, max_value=0.0872665)
 windspeeds = floats(min_value=0.5, max_value=18.0)
-
-windfields = builds(windfield_function, directions, windspeeds)
-lidars = builds(lidar_simulator, angles, angles)
-# shear is inaccurate with roll, could be addressed
-flat_lidars = builds(lidar_simulator, angles)
-
 shears = floats(min_value=0.143 / 2, max_value=0.143 * 2)
-veers = floats(min_value=-0.0314159, max_value=0.0314159) # +- 1.8 deg / m
-sheared_veering_windfields = builds(
-    windfield_function, directions, windspeeds, shear=shears, veer=veers)
+veers = floats(min_value=-0.0314159, max_value=0.0314159)  # +- 1.8 deg / m
+heaves = floats(min_value=-30.0, max_value=30.0)
+surges = floats(min_value=-30.0, max_value=30.0)
+velocities = floats(min_value=-5.0, max_value=5.0)
+angular_velocities = floats(min_value=-5.0, max_value=5.0)
 
-processor_input = builds(
-    generate_input, windfields, lidars, distances)
-sheared_veering_processor_input = builds(
-    generate_input, sheared_veering_windfields, flat_lidars, distances)
+
+def windfields(directions, windspeeds, **kwargs):
+    return builds(windfield_function, directions, windspeeds, **kwargs)
+
+
+def lidars(**kwargs):
+    return builds(lidar_simulator, **kwargs)
+
+
+def processor_inputs(lidars, windfields):
+    return builds(generate_input, windfields, lidars, distances)
+
 
 def process_with_args(dist, df):
     out = camille.lidar.windfield_desc(df, dist, lidar_hgt, 0)
@@ -134,33 +193,108 @@ def process_with_args(dist, df):
     return out
 
 
-@given(processor_input)
-@settings(deadline=None)
-def test_lidar(args):
-    dist, windfield, _, df = args
-    processed = process_with_args(dist, df)
+def scenario(case,
+             ref_speed=lambda windfield, *args, **kwargs:
+                 approx(windfield(*args, **kwargs)[0]),
+             ref_direction=lambda windfield:
+                 approx(windfield.yaw_direction()),
+             ref_shear=lambda windfield: approx(windfield.shear),
+             ref_veer=lambda windfield: approx(windfield.veer)):
+    @given(case)
+    @settings(deadline=None, print_blob=True)
+    def test(args):
+        dist, windfield, _, df = args
+        processed = process_with_args(dist, df)
 
-    ref_speed, _ = windfield(np.array([dist, 0, lidar_hgt]))
-    ref_direction = windfield.yaw_direction()
-    for _, row in processed.iterrows():
-        assert row.shear == approx(0)
-        assert row.veer == approx(0)
-        assert row.hwd == approx(ref_direction)
-        assert row.hws == approx(ref_speed)
+        p = np.array([dist, 0, lidar_hgt])
+        for _, row in processed.iterrows():
+            assert row.hws == ref_speed(windfield, p)
+            assert row.hwd == ref_direction(windfield)
+            assert row.shear == ref_shear(windfield)
+            assert row.veer == ref_veer(windfield)
+    return test
 
 
-@given(sheared_veering_processor_input)
-@settings(deadline=None)
-def test_lidar_sheared_veering_windfield(args):
-    dist, windfield, _, df = args
-    processed = process_with_args(dist, df)
+test_lidar_static = scenario(
+    processor_inputs(
+        lidars(pitch=angles, roll=angles),
+        windfields(directions, windspeeds)),
+    ref_shear=lambda _: approx(0),
+    ref_veer=lambda _: approx(0))
 
-    ref_speed, _ = windfield(np.array([dist, 0, lidar_hgt]))
-    ref_direction = windfield.yaw_direction()
-    ref_shear = windfield.shear
-    ref_veer = windfield.veer
-    for _, row in processed.iterrows():
-        assert row.shear == approx(ref_shear)
-        assert row.veer == approx(ref_veer)
-        assert row.hwd == approx(ref_direction)
-        assert row.hws == approx(ref_speed)
+
+test_lidar_no_inertia = scenario(
+    processor_inputs(
+        lidars(pitch=angles, roll=angles, surge=surges, heave=heaves),
+        windfields(directions, windspeeds)),
+    ref_shear=lambda _: approx(0),
+    ref_veer=lambda _: approx(0))
+
+
+test_lidar_linear_inertia = scenario(
+    processor_inputs(
+        lidars(pitch=angles,
+               roll=angles,
+               surge_velocity=velocities,
+               sway_velocity=velocities,
+               heave_velocity=velocities),
+        windfields(directions, windspeeds)),
+    ref_shear=lambda _: approx(0),
+    ref_veer=lambda _: approx(0))
+
+
+test_lidar_linear = scenario(
+    processor_inputs(
+        lidars(pitch=angles,
+               roll=angles,
+               surge=surges,
+               heave=heaves,
+               surge_velocity=velocities,
+               sway_velocity=velocities,
+               heave_velocity=velocities),
+        windfields(directions, windspeeds)),
+    ref_shear=lambda _: approx(0),
+    ref_veer=lambda _: approx(0))
+
+
+test_lidar_angular = scenario(
+    processor_inputs(
+        lidars(pitch=angles,
+               roll=angles,
+               pitch_velocity=angular_velocities,
+               roll_velocity=angular_velocities,
+               yaw_velocity=angular_velocities),
+        windfields(directions, windspeeds)),
+    ref_shear=lambda _: approx(0, abs=1.0e-10),
+    ref_veer=lambda _: approx(0))
+
+
+test_lidar_full = scenario(
+    processor_inputs(
+        lidars(pitch=angles,
+               roll=angles,
+               surge=surges,
+               heave=heaves,
+               surge_velocity=velocities,
+               sway_velocity=velocities,
+               heave_velocity=velocities,
+               pitch_velocity=angular_velocities,
+               roll_velocity=angular_velocities,
+               yaw_velocity=angular_velocities),
+        windfields(directions, windspeeds)),
+    ref_shear=lambda _: approx(0, abs=1.0e-10),
+    ref_veer=lambda _: approx(0))
+
+
+test_lidar_sheared_veering_windfield = scenario(
+    processor_inputs(
+        lidars(pitch=angles,
+               surge=surges,
+               heave=heaves,
+               surge_velocity=velocities,
+               sway_velocity=velocities,
+               heave_velocity=velocities,
+               pitch_velocity=angular_velocities,
+               roll_velocity=angular_velocities,
+               yaw_velocity=angular_velocities),
+        windfields(directions, windspeeds, shear=shears, veer=veers)))

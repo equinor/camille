@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.11.0)
 project(camille-native LANGUAGES C CXX)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_VISIBILITY_PRESET "hidden")
 set(CMAKE_C_VISIBILITY_PRESET   "hidden")
 
