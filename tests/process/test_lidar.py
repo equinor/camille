@@ -1,11 +1,11 @@
 from camille.core import sample_pos
-from datetime import datetime, timedelta
+from camille.util import utcdate
+from datetime import timedelta
 from hypothesis import given, settings
 from hypothesis.strategies import builds, floats, integers
 from itertools import count
 from math import acos, atan2, cos, pi, radians, sin, tan
 from pytest import approx
-from pytz import utc
 import camille
 import numpy as np
 import pandas as pd
@@ -140,7 +140,7 @@ def generate_input(windfield,
                    lidar,
                    distance,
                    n=4,
-                   start_date=datetime(2030, 1, 1, 12, tzinfo=utc)):
+                   start_date=utcdate(year=2030, month=1, day=1, hour=12)):
     df = pd.DataFrame(columns=[
         'los_id', 'radial_windspeed', 'status', 'surge', 'heave', 'pitch',
         'roll', 'surge_velocity', 'sway_velocity', 'heave_velocity',
