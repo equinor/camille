@@ -209,9 +209,9 @@ def scenario(case,
         p = np.array([dist, 0, lidar_hgt])
         for _, row in processed.iterrows():
             assert row.hws == ref_speed(windfield, p)
-            assert row.hwd == ref_direction(windfield)
             assert row.shear == ref_shear(windfield)
             assert row.veer == ref_veer(windfield)
+            assert row.hwd == ref_direction(windfield)
     return test
 
 

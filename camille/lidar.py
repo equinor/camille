@@ -64,8 +64,10 @@ def extrapolate_winddirection(df, height):
     pandas.Series
         Wind direction at target height
     """
-    hwd = df.dir + df.veer * (height - df.height)
-    return hwd
+
+    hwd = df.dir.values + df.veer.values * (height - df.height.values)
+    hwd = np.arcsin(np.sin(hwd))  # Normalize direction
+    return pd.Series(hwd, index=df.index)
 
 
 def windfield_desc(df, dist, hub_height, lidar_height_offset):

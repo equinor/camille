@@ -218,8 +218,15 @@ double veer(double dir_upr,
             double dir_lwr,
             double hgt_upr,
             double hgt_lwr) noexcept {
+    using std::atan2;
+    using std::sin;
+    using std::cos;
+    double a = dir_upr - dir_lwr;
 
-    return (dir_upr - dir_lwr) / (hgt_upr - hgt_lwr);
+    // Normalize angular difference
+    double n = atan2(sin(a), cos(a));
+
+    return n / (hgt_upr - hgt_lwr);
 }
 
 static const auto planar_windspeed_docstring = R"(
