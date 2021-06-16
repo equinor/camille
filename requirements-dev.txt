@@ -1,5 +1,6 @@
-pytest==3.10.1
-pytest-repeat
 hypothesis
-scikit-build
+mock-ssh-server
 pybind11
+pytest-repeat
+pytest==3.10.1
+scikit-build
