@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 from camille.source import Bazefetcher, TagNotFoundError
+from camille.source.bazefetcher import RemoteIO
 from camille.source.bazefetcher import _get_files_between_start_and_end
 from datetime import datetime, timedelta
 from math import pi
 from pytz import utc
+from unittest import mock
+import contextlib
+import mockssh
 import numpy as np
 import pandas as pd
 import pytest
@@ -12,6 +16,26 @@ import pytest
 authored = Bazefetcher('tests/test_data/authored')
 baze = Bazefetcher('tests/test_data/baze')
 non_standard = Bazefetcher('tests/test_data/non_standard_names')
+
+
+@contextlib.contextmanager
+def mock_remote_ssh():
+    with contextlib.ExitStack() as exit_stack:
+        users = {'ssh-user': 'tests/test_data/ssh/id_rsa'}
+        server = exit_stack.enter_context(mockssh.Server(users))
+        client = exit_stack.enter_context(server.client('ssh-user'))
+
+        connect_mock = exit_stack.enter_context(mock.patch(
+            'camille.source.bazefetcher.RemoteIO._create_connection'
+        ))
+        connect_mock.return_value = client
+
+        #disable disconnect
+        exit_stack.enter_context(mock.patch(
+            'camille.source.bazefetcher.RemoteIO.__exit__'
+        ))
+        yield
+
 
 t12_31_22 = datetime(2029, 12, 31, 22, tzinfo=utc)
 t12_31_23 = datetime(2029, 12, 31, 23, tzinfo=utc)
@@ -103,12 +127,6 @@ def test_read_outside_timeseries_in_file():
     assert empty_time_series.name == 'value'
     assert empty_time_series.index.name == 'time'
 
-def test_no_directories():
-    with pytest.raises(ValueError) as excinfo:
-        Bazefetcher('tests/test_data/baze/perling')
-    assert ('no file in [\'tests/test_data/baze/perling\'] is a directory'
-            in str(excinfo.value))
-
 def test_non_existing_tag():
     with pytest.raises(TagNotFoundError) as excinfo:
         baze('non-existing-tag', t1_1, t1_1_1)
@@ -183,38 +201,13 @@ def test_snap_both():
 
 def test_many_roots():
     baze_and_authored = Bazefetcher(
-        ['tests/test_data/authored', 'tests/test_data/baze'])
+        paths=['tests/test_data/authored', 'tests/test_data/baze'])
 
     sin_b = baze_and_authored('Sin-T60s-SR01hz', t1_2, t1_4)
     assert len(sin_b) == 17280
 
     i04_status_b = authored('installation-04-status', t12_31_23, t1_5_1)
     assert len(i04_status_b) == 5
-
-
-def test_many_roots_same_tag():
-    roots = ['tests/test_data/many_roots/dir'+ str(index)
-             for index in [3, 1, 2]]
-    many_roots = Bazefetcher(roots)
-    tag = "root_tag"
-    root = many_roots(tag, t1_1, t1_5)
-    assert len(root) == 7
-
-    root = many_roots(tag, t1_3, t1_3_21)
-    assert len(root) == 1
-
-    root = many_roots(tag, t1_3, t1_3_21, snap='right')
-    assert len(root) == 2
-
-
-def test_many_roots_same_filename():
-    roots = ['tests/test_data/many_roots/dir'+ str(index)
-             for index in [1, 4]]
-    many_roots = Bazefetcher(roots)
-    with pytest.raises(ValueError) as excinfo:
-        many_roots("root_tag", t1_1, t1_5)
-    assert ('files [\'root_tag_2030-01-03T00.00.00+00.00_2030-01-04T00.00.00'
-            '+00.00.json.gz\'] are not unique' in str(excinfo.value))
 
 
 def test_no_time_boundaries():
@@ -227,9 +220,10 @@ def test_no_time_boundaries():
 
 
 def test_no_unnecessary_files_read():
-    #testing private method to cover the case where unnecessary files were readlllll
-    files = _get_files_between_start_and_end(
-        authored.src_dirs, 'installation-04-status', t1_2, t1_3)
+    # Testing private method to cover the case where unnecessary files were read
+    tag = 'installation-04-status'
+    with authored._tag_protocol(tag) as io:
+        files = _get_files_between_start_and_end(io, tag, t1_2, t1_3)
     assert len(files) == 1
 
 
@@ -256,3 +250,34 @@ def test_load_special_regex_file():
 def test_load_bad_format_file():
     df = baze('bad_format')
     assert df.empty
+
+
+def test_remote_io():
+    path = 'ssh-user@127.0.0.1:tests/test_data/remote'
+    with mock_remote_ssh(), RemoteIO(path) as io:
+            assert io.is_dir()
+            assert not (io / 'not a dir').is_dir()
+            assert sorted(io.iterdir()) == [
+                io / 'hello_world',
+                io / 'not a dir',
+            ]
+            assert (io / 'name').name == 'name'
+            with (io / 'hello_world').open() as f:
+                assert f.read() == b'Hello World!\n'
+
+
+def test_remote_root():
+    with mock_remote_ssh():
+        remote_baze = Bazefetcher('127.0.0.1:tests/test_data/baze')
+
+        sin_b = remote_baze('Sin-T60s-SR01hz', t1_2, t1_4)
+        tan_b = remote_baze('Tan-T60s-SR01hz', t1_2, t1_4)
+        assert len(sin_b) == len(tan_b) == 17280 # 2 days
+        pd.testing.assert_series_equal(
+            sin_b, sin(t1_2, t1_4), check_freq=False)
+        pd.testing.assert_series_equal(
+            tan_b, tan(t1_2, t1_4), check_freq=False)
+        assert sin_b.index[0] == t1_2
+        assert sin_b.index[-1] < t1_4
+        assert (t1_4 - sin_b.index[-1]
+                ).to_pytimedelta() < timedelta(seconds=20)

@@ -1,16 +1,210 @@
-import os
-from os.path import join, isdir, basename
-import re
-import datetime
-import pytz
-import pandas as pd
-from collections import abc
-from math import ceil
 from ..util import utcdate
+from abc import ABC
+from abc import abstractmethod
+import contextlib
+import datetime
+import os
+import pandas as pd
+import paramiko
+import pathlib
+import pytz
+import re
+import stat
+import threading
+
+
+class AbstractIO(ABC):
+    @abstractmethod
+    def __enter__(self):
+        """
+        Using an IO implementation as a context manager should yield an io
+        object implementing an interface similar to that of `pathlib.Path`
+        """
+
+    @abstractmethod
+    def __exit__(self, exc_type, exc_value, trace):
+        """Close resources and forward errors"""
+
+
+class RemoteIO(AbstractIO):
+    class RemotePath:
+        """
+        Internal helper object providing an interface similar to that of
+        `pathlib.Path` over ssh
+        """
+        def __init__(self, owner, path=None):
+            self.owner = owner
+            self._path = path
+
+        def __getattr__(self, name):
+            """
+            RemotePath is a partial implementation of `pathlib.Path`. This
+            method communicates to the caller that if the attribute `name` is
+            implemented in `pathlib.Path`, there is an intention that it should
+            be implemented in this class as well.
+
+            We do however only bother to implement specifically the interface
+            that is used in this module.
+            """
+            if hasattr(pathlib.Path, name):
+                msg = f'{name} is not implemented for RemotePath'
+                raise NotImplementedError(msg)
+            clsname = self.__class__.__name__
+            msg = f"'{clsname}' object has no attribute '{name}'"
+            raise AttributeError(msg)
+
+        @property
+        def path(self):
+            return self._path if self._path is not None else self.owner.path
+
+        @property
+        def name(self):
+            return self.path.name
+
+        def is_dir(self):
+            try:
+                remote_stat = self.owner.sftp.stat(str(self.path))
+                return bool(stat.S_ISDIR(remote_stat.st_mode))
+            except FileNotFoundError:
+                return False
+
+        def iterdir(self):
+            return (self / f for f in self.owner.sftp.listdir(str(self.path)))
+
+        def open(self,
+                 mode='r',
+                 buffering=-1,
+                 encoding=None,
+                 errors=None,
+                 newline=None):
+            return self.owner.sftp.open(str(self.path), mode)
+
+        def _replace(self, **kwargs):
+            """
+            Replace the existing values of class attributes with new ones.
+            Parameters
+            ----------
+            kwargs : dict
+                keyword arguments corresponding to one or more attributes whose
+                values are to be modified
+            Returns
+            -------
+            A new class instance with replaced attributes
+            """
+            attribs = {k: kwargs.pop(k, v) for k, v in vars(self).items()}
+            if kwargs:
+                raise ValueError(f'Got unexpected field names: {list(kwargs)!r}')
+            inst = self.__class__.__new__(self.__class__)
+            inst.__dict__.update(attribs)
+            return inst
+
+        def __eq__(self, other):
+            if self.__class__ is not other.__class__:
+                return False
+            return self.owner == other.owner and self.path == other.path
+
+        def __lt__(self, other):
+            if not isinstance(other, self.__class__):
+                msg = (f"TypeError: '<' not supported between instances of "
+                       f"'{self.__class__.__name__}' and "
+                       f"'{other.__class__.__name__}'")
+                raise TypeError(msg)
+            return str(self) < str(other)
+
+        def __truediv__(self, other):
+            return self._replace(_path=self.path / other)
+
+        def __repr__(self):
+            return f'{self.__class__.__name__}<{str(self.path)}>'
+
+    @staticmethod
+    def parse_path(path):
+        xs = str(path)
+        username = None
+        if '@' in path:
+            username, xs = xs.split('@')
+        host, p = xs.split(':', 1)
+        return pathlib.Path(p), host, username
+
+    def __init__(self, path, missing_host_key_policy=paramiko.WarningPolicy()):
+        self._original_path = path
+        self.path, self.host, self.username = self.parse_path(path)
+        self.port = 22
+        self.missing_host_key_policy = missing_host_key_policy
+        self._connection = None
+        self._sftp = None
+        self._use_count = 0
+        self._lock = threading.Lock()
+
+    @property
+    def ssh(self):
+        if self._connection is None:
+            raise ValueError('RemoteIO not connected')
+        return self._connection
+
+    @property
+    def sftp(self):
+        if self._sftp is None:
+            assert self.ssh.get_transport() != None
+            self._sftp = self.ssh.open_sftp()
+        return self._sftp
+
+    def _create_connection(self):
+        conection = paramiko.SSHClient()
+        conection.set_missing_host_key_policy(self.missing_host_key_policy)
+        conection.connect(self.host,
+                          port=self.port,
+                          username=self.username,
+                          allow_agent=False,
+                          look_for_keys=True)
+        return conection
+
+    def __enter__(self):
+        with self._lock:
+            if self._connection is None:
+                self._connection = self._create_connection()
+            self._use_count += 1
+        return self.RemotePath(self)
+
+    def __exit__(self, exc_type, exc_value, trace):
+        with self._lock:
+            self._use_count -= 1
+            if self._use_count < 0:
+                raise RuntimeError('RemoteIO invariant error')
+            if self._use_count == 0:
+                if self._sftp is not None:
+                    self._sftp.close()
+                    self._sftp = None
+                self._connection.close()
+                self._connection = None
+        if exc_type is not None:
+            return False
+
+    def __eq__(self, other):
+        if self.__class__ is not other.__class__:
+            return False
+        return self._original_path == other._original_path
+
+
+class LocalIO(AbstractIO):
+    def __init__(self, path):
+        self.path = path
+
+    def __enter__(self):
+        print(self.path)
+        return pathlib.Path(self.path)
+
+    def __exit__(self, exc_type, exc_value, trace):
+        if exc_type is not None:
+            return False
+
+    def __repr__(self):
+        return str(self.path)
 
 
 class TagNotFoundError(ValueError):
     pass
+
 
 date_pattern = r'[0-9]{4}-[0-9]{2}-[0-9]{2}'
 time_pattern = r'[0-9]{2}\.[0-9]{2}\.[0-9]{2}\+[0-9]{2}\.[0-9]{2}'
@@ -51,47 +245,29 @@ def _tidy_frame(df, tzinfo):
     df.sort_index(inplace=True)
 
 
-def _get_files(src_dirs, tag, fn_regex, date_pred):
+def _get_files(io, fn_regex, date_pred):
     """
-    Gets all possible files with tag under src_dirs which satisfy
-    fn_regex and date_func
+    Gets all possible files with tag under io which satisfy
+    fn_regex and date_pred
     """
-    tag_roots = list(filter(isdir, (join(dr, tag) for dr in src_dirs)))
-
-    if not tag_roots:
-        raise TagNotFoundError('Tag {} not found in {}'.format(tag, src_dirs))
-
-    files = [join(r, fn) for r in tag_roots for fn in os.listdir(r)
-             if fn_regex.match(fn) and date_pred(fn)]
-
-    if len(src_dirs) > 1:
-        fnames = list(map(basename, files))
-        if len(fnames) != len(set(fnames)):
-            seen = set()
-            dupl = []
-            for fn in fnames:
-                if fn in seen:
-                    dupl.append(fn)
-                seen.add(fn)
-            raise ValueError("files {} are not unique".format(dupl))
-
-    return files
+    file_contexts = [f for f in io.iterdir()
+                     if fn_regex.match(f.name) and date_pred(f.name)]
+    return file_contexts
 
 
 def _get_fn_regex(tag):
     return re.compile(re.escape(tag) + fn_tail_pattern)
 
 
-def _get_files_between_start_and_end(src_dirs, tag, start_dt, end_dt):
+def _get_files_between_start_and_end(io, tag, start_dt, end_dt):
     return _get_files(
-        src_dirs,
-        tag,
+        io,
         _get_fn_regex(tag),
         lambda fn: _fn_start_date(fn) < end_dt and _fn_end_date(fn) > start_dt
     )
 
 
-def _extend_bwd(start_date, df, src_dirs, tag, fn_regex, tzinfo):
+def _extend_bwd(io, tag, start_date, df, fn_regex, tzinfo):
     """
     Extends the range to include the last sample before or at the same time
     as the start of time range
@@ -101,17 +277,16 @@ def _extend_bwd(start_date, df, src_dirs, tag, fn_regex, tzinfo):
         start_date = df[:start_date].index.max()
         return df, start_date
 
-    files = _get_files(src_dirs, tag, fn_regex,
-                       lambda fn: _fn_end_date(fn) <= start_date)
+    files = _get_files(io, fn_regex, lambda fn: _fn_end_date(fn) <= start_date)
 
     while True:
         if not files: break
 
-        prev_fn = max(files, key=lambda x: _fn_end_date( os.path.basename(x) ))
-        tmp_df = pd.read_json(prev_fn)
+        prev_f = max(files, key=lambda x: _fn_end_date(x.name))
+        tmp_df = pd.read_json(prev_f, compression='gzip')
 
         if tmp_df.empty:
-            files.remove(prev_fn)
+            files.remove(prev_f)
             continue
 
         _tidy_frame(tmp_df, tzinfo)
@@ -125,7 +300,7 @@ def _extend_bwd(start_date, df, src_dirs, tag, fn_regex, tzinfo):
     return df, start_date
 
 
-def _extend_fwd(end_date, df, src_dirs, tag, fn_regex, tzinfo):
+def _extend_fwd(io, tag, end_date, df, fn_regex, tzinfo):
     """
     Extends the range to include the next sample after or at the same time
     as the end of time range
@@ -135,18 +310,16 @@ def _extend_fwd(end_date, df, src_dirs, tag, fn_regex, tzinfo):
         end_date = df[end_date:].index.min()
         return df, end_date + datetime.timedelta(microseconds=1)
 
-    files = _get_files(src_dirs, tag, fn_regex,
-                       lambda fn: _fn_start_date(fn) >= end_date)
+    files = _get_files(io, fn_regex, lambda fn: _fn_start_date(fn) >= end_date)
 
     while True:
         if not files: break
 
-        next_fn = min(files,
-                      key=lambda x: _fn_start_date( os.path.basename(x) ))
-        tmp_df = pd.read_json(next_fn)
+        next_f = min(files, key=lambda x: _fn_start_date(x.name))
+        tmp_df = pd.read_json(next_f, compression='gzip')
 
         if tmp_df.empty:
-            files.remove(next_fn)
+            files.remove(next_f)
             continue
 
         _tidy_frame(tmp_df, tzinfo)
@@ -165,8 +338,10 @@ class Bazefetcher:
     """Bazefetcher
 
     Callable object that can be used to read time series from specified root
-    directories. Tag split across directories is supported as long as all
-    filenames are unique.
+    paths. Tag split across paths is supported as long as all filenames are
+    unique. Paths are given in the following format:
+        `[<user>@<host>:]<posix-path>`
+    Paths will be considered remote if they contain ':'.
 
     Attributes
     ----------
@@ -190,19 +365,46 @@ class Bazefetcher:
     >>> ts = cin('Perlin', start_date, end_date, snap='both')
     """
 
-    def __init__(self, src_dir, tzinfo=pytz.utc):
-        if isinstance(src_dir, str):
-            src_dir = [src_dir]
-
-        src_dirs = [dr for dr in src_dir if isdir(dr)]
-        if not src_dirs:
-            raise ValueError('no file in {} is a directory'.format(src_dir))
-
-        if not isinstance(tzinfo, datetime.tzinfo):
-            raise ValueError('tzinfo must be instance of datetime.tzinfo')
-
-        self.src_dirs = src_dirs
+    def __init__(self, path=None, paths=None, tzinfo=pytz.utc):
+        if path is None and paths is None or (
+            path is not None and paths is not None):
+            raise ValueError('specify either path or paths')
+        if path is not None:
+            if not isinstance(path, str):
+                raise TypeError(f'Expected str type, not {type(path)}')
+            paths = [path]
+        self.srcs = [
+            self._select_protocol(path)
+            for path in paths
+        ]
         self.tzinfo = tzinfo
+
+    @staticmethod
+    def _select_protocol(path):
+        if os.name == 'nt':
+            drive, xs = os.path.splitdrive(path)
+            xs = xs.split(':', 1)
+            if len(xs) == 2:
+                return RemoteIO(path)
+        elif ':' in path:
+            return RemoteIO(path)
+
+        return LocalIO(path)
+
+    @contextlib.contextmanager
+    def _tag_protocol(self, tag):
+        protocols = iter(self.srcs)
+        while True:
+            try:
+                protocol = next(protocols)
+                with protocol as io:
+                    io = io / tag
+                    if io.is_dir():
+                        yield io
+                        break
+            except StopIteration:
+                msg = f'Tag {tag} not found in {self.srcs}'
+                raise TagNotFoundError(msg)
 
     def __call__(self,
                  tag,
@@ -233,30 +435,38 @@ class Bazefetcher:
         if not start_date <= end_date:
             raise ValueError('start_date must be earlier than end_date')
 
-        files = _get_files_between_start_and_end(
-            self.src_dirs, tag, start_date, end_date)
+        with self._tag_protocol(tag) as io:
+            files = _get_files_between_start_and_end(io,
+                                                     tag,
+                                                     start_date,
+                                                     end_date)
+            with contextlib.ExitStack() as exit_stack:
+                L = [
+                    pd.read_json(buffer, compression='gzip') for buffer in (
+                        exit_stack.enter_context(f.open(mode='rb'))
+                        for f in files
+                    )
+                ]
+            df = pd.concat(L, sort=True) if len(L) > 0 else pd.DataFrame()
 
-        L = [pd.read_json(fn) for fn in files]
-        df = pd.concat(L, sort=True) if len(L) > 0 else pd.DataFrame()
+            _tidy_frame(df, self.tzinfo)
+            fn_regex = _get_fn_regex(tag)
 
-        _tidy_frame(df, self.tzinfo)
-        fn_regex = _get_fn_regex(tag)
+            if snap == 'left' or snap == 'both':
+                df, start_date = _extend_bwd(io,
+                                             tag,
+                                             start_date,
+                                             df,
+                                             fn_regex,
+                                             self.tzinfo)
 
-        if snap == 'left' or snap == 'both':
-            df, start_date = _extend_bwd(start_date,
-                                         df,
-                                         self.src_dirs,
-                                         tag,
-                                         fn_regex,
-                                         self.tzinfo)
-
-        if snap == 'right' or snap == 'both':
-            df, end_date = _extend_fwd(end_date,
-                                       df,
-                                       self.src_dirs,
-                                       tag,
-                                       fn_regex,
-                                       self.tzinfo)
+            if snap == 'right' or snap == 'both':
+                df, end_date = _extend_fwd(io,
+                                           tag,
+                                           end_date,
+                                           df,
+                                           fn_regex,
+                                           self.tzinfo)
 
         try:
             eps = datetime.timedelta(microseconds=1)
@@ -266,208 +476,3 @@ class Bazefetcher:
             pass
 
         return ts
-
-
-    def create_iterator(self, tags, start=None, end=None,
-                        interval=datetime.timedelta(1),
-                        padding=datetime.timedelta(0), leftpad=True,
-                        rightpad=False, tag_kwargs=None):
-        return BazeIter(self, tags, start=start, end=end, interval=interval,
-                        padding=padding, leftpad=leftpad, rightpad=rightpad,
-                        tag_kwargs=tag_kwargs)
-
-class BazeIter(abc.Iterable, abc.Sized):
-    """Bazefetcher iterator
-
-
-    Creates pandas.Series from camille.source.bazefetcher() as iterations of the
-    time range [start, stop> at given intervals. Returns the Pandas.Series,
-    start, stop for each iteration. The timerange for the returned Pandas.Series
-    includes (optional) padding, while the start and stop does not.
-
-
-    Returns
-    -------
-
-    data : pandas.Series or dict of pandas.Series
-        The series gathered from the baze-function for each iteration. If a list
-        of tags is provided a dict is returned mapping tags to corresponding
-        series.
-        Includes padding
-    start : list of datetime.datetime
-        The start dates for all iterations. Does not include padding
-    end : list of datetime.datetime
-        The end time for all iterations. Does not include padding
-
-
-
-    See Also
-    --------
-
-    camille.source.bazefetcher
-
-    Notes
-    -----
-
-     .. versionadded:: 1.0
-
-    Examples
-    --------
-
-    Read 'series' from 'tag':
-
-    >>> baze = camille.source.bazefetcher(root)
-    >>> start_date = datetime.datetime(..., tzinfo=utc)
-    >>> end_date = datetime.datetime(..., tzinfo=utc)
-    >>> padding  = datetime.timedelta(...)
-    >>> it = baze_iterator(baze, tag, start_date, end_date, padding=padding)
-    >>> for series, s, e in it:
-    ...     #do something
-
-    """
-
-    def __init__(self, baze, tags, start=None, end=None,
-                 interval=datetime.timedelta(1), padding=datetime.timedelta(0),
-                 leftpad=True, rightpad=False, tag_kwargs=None):
-        """
-        Parameters
-        ----------
-
-        baze : camille.source.bazefetcher(root)
-            The bazefetcher source function
-        tag : str or list of str
-            The tag the series will be written from
-        start : datetime.datetime
-            The start time of the data to be read (Inclusive)
-            Must be timezone aware
-        end : datetime.datetime
-            The end time of the data to be read (Exclusive)
-            Must be timezone aware
-        interval : datetime.timedelta
-            The interval of the iterations. Must be days. Defaults to 1
-        padding : datetime.timedelta or int
-            The padding that is applied to each iteration. Can be specified as
-            a timedelta or number of samples (int). Defaults to 0
-        leftpad : Bool
-            Add the padding to the start of each iteration. Defaults to True
-        rightpad : Bool
-            Add the padding to the end of each iteration. Defaults to False
-        tag_kwargs : dict
-            Dictionary of additional key arguments to pass when running
-            baze_fetcher source for the given keyword
-        """
-
-        if start is None:
-            start = _find_start_time(baze, tags)
-        if end is None:
-            end = _find_stop_time(baze, tags)
-
-        self.baze = baze
-        self.tags = tags
-        self.interval = interval
-        self.padding = padding
-        self.leftpad = leftpad
-        self.rightpad = rightpad
-        self.start = start
-        self.stop = end
-        periods = ceil((end - start) / interval)
-        self.beg = pd.date_range(start=start, periods=periods, freq=interval)
-        self.end = self.beg + interval
-        self.it = list(zip(self.beg, self.end))
-        self.tag_kwargs = tag_kwargs if tag_kwargs is not None else {}
-
-
-    def __iter__(self):
-        for b, e in self.it:
-            e = min(e, self.stop)
-            lrange, rrange = b, e
-
-            if not isinstance(self.padding, int):
-                if self.leftpad: lrange = b - self.padding
-                if self.rightpad: rrange = e + self.padding
-
-            if isinstance(self.tags, str):
-                d = self.baze(self.tags, lrange, rrange,
-                              **self.tag_kwargs.get(self.tags, {}))
-            else:
-                d = {t: self.baze(t, lrange, rrange,
-                                  **self.tag_kwargs.get(t, {}))
-                     for t in self.tags}
-
-            if isinstance(self.padding, int):
-                if isinstance(d, dict):
-                    for k in d:
-                        d[k] = self._index_pad(d[k], lrange, rrange, k)
-                else:
-                    d = self._index_pad(d, lrange, rrange, self.tags)
-
-            yield d, b, e
-
-    def __len__(self):
-        return len(self.it)
-
-    def _index_pad(self, series, s, e, tag):
-        min_time = None
-        max_time = None
-        if self.leftpad:
-            p = s
-            while True:
-                p -= datetime.timedelta(days=1)
-
-                a = self.baze(tag, p, s, **self.tag_kwargs.get(tag, {}))
-                if len(a) >= self.padding:
-                    return a.iloc[-self.padding:].append(series)
-
-                if not min_time:
-                    min_time = _find_start_time(self.baze, tag)
-
-                if min_time and p <= min_time:
-                    return series
-
-        if self.rightpad:
-            p = e
-            while True:
-                p += datetime.timedelta(days=1)
-
-                a = self.baze(tag, e, p, **self.tag_kwargs.get(tag, {}))
-                if len(a) >= self.padding:
-                    return series.append(a.iloc[:self.padding])
-
-                if not max_time:
-                    min_time = _find_stop_time(self.baze, tag)
-
-                if max_time and p >= max_time:
-                    return series
-
-
-def _get_all_files(src_dirs, tags):
-    tags = [tags] if isinstance(tags, str) else tags
-
-    tag_roots = [ join(dr, tag)
-                  for dr in src_dirs
-                  for tag in tags
-                  if isdir( join(dr, tag) ) ]
-
-    if not tag_roots:
-        msg = 'None of the tags {} were found in {}'.format(tags, src_dirs)
-        raise ValueError(msg)
-
-    fn_rgx = r'.*\.json\.gz$'
-    file_names = [join(r, fn)
-                  for r in tag_roots
-                  for fn in os.listdir(r)
-                  if re.match(fn_rgx, fn)]
-
-    return file_names
-
-
-def _find_start_time(baze, tags):
-    files = _get_all_files(baze.src_dirs, tags)
-    file_dates = [ _fn_start_date(fn) for fn in files ]
-    return min( file_dates )
-
-
-def _find_stop_time(baze, tags):
-    files = _get_all_files(baze.src_dirs, tags)
-    file_dates = [ _fn_end_date(fn) for fn in files ]
-    return max( file_dates )

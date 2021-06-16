@@ -1,6 +1,7 @@
 numpy
 pandas>=1.1.0,<1.2.0
-scipy
+paramiko
+pytz
 rainflow==2.2.0
 requests
-pytz
+scipy
