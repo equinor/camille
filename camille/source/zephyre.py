@@ -1,13 +1,13 @@
+from azure.identity import AzureCliCredential
 from io import StringIO
 from pytz import utc
-from subprocess import PIPE
-from subprocess import Popen
 import pandas as pd
 import requests
 
 
 urljoin = requests.compat.urljoin
 default_host='https://resource-zephyre-dev.playground.radix.equinor.com:443'
+default_scope = 'api://d87a78b5-431d-43a3-902a-8fc97e357395'
 
 
 def isoformat(date):
@@ -41,8 +41,8 @@ class Zephyre:
 
     Notes
     -----
-    `oauth2local serve` must be running in order to authenticate with the
-    zephyre API.
+    `az login` must be run called (and succesfully finished) in order
+    to authenticate with the zephyre API.
 
     Examples
     --------
@@ -54,22 +54,18 @@ class Zephyre:
     >>> ts = z('tag', start_date, end_date, snap='both')
     """
 
-    def __init__(self, host=default_host):
+    def __init__(self, host=default_host, scope=default_scope):
         self.host = host
+        self.scope = default_scope
 
     def _get_token(self):
-        proc = Popen(['oauth2local', 'token'], stdin=PIPE, stdout=PIPE)
-        out, err = proc.communicate()
-        exit_code = proc.wait(timeout=0.005)
+        try:
+            credential = AzureCliCredential()
+            azureToken = credential.get_token(self.scope)
+        except Exception as ex:
+            raise RuntimeError(str(ex))
 
-        if exit_code == 8:
-            msg = 'oauth2local could not be reached, is it running?'
-            raise RuntimeError(msg)
-        elif exit_code != 0:
-            msg = 'oauth2local token non zero exit code {}, {}, {}'
-            raise RuntimeError(msg.format(exit_code, out, err))
-
-        return out.decode('utf-8').strip()
+        return azureToken.token
 
     @property
     def token(self):
