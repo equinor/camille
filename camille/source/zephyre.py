@@ -6,7 +6,7 @@ import requests
 
 
 urljoin = requests.compat.urljoin
-default_host='https://resource-zephyre-dev.playground.radix.equinor.com:443'
+default_host = 'https://resource-zephyre-dev.playground.radix.equinor.com:443'
 default_scope = 'api://d87a78b5-431d-43a3-902a-8fc97e357395'
 
 
@@ -70,7 +70,6 @@ class Zephyre:
     @property
     def token(self):
         return self._get_token()
-
 
     def __call__(self, tag, start_date, end_date, tzinfo=utc):
         """
