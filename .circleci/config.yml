@@ -70,9 +70,9 @@ commands:
               . py_venv/bin/activate
             fi
             python3 --version
+            python3 -m pip install cmake flake8 bandit setuptools-scm
             python3 -m pip install -r requirements.txt
             python3 -m pip install -r requirements-dev.txt
-            python3 -m pip install cmake flake8 bandit setuptools-scm
             python3 -m pip install coverage codacy-coverage
 
   python-build-test:
@@ -98,7 +98,7 @@ commands:
       - run:
           name: Check formatting rules (PEP8)
           command: |
-            git diff HEAD^ | flake8 --diff --per-file-ignores="__init__.py:F401"
+            git diff origin/master | flake8 --diff --per-file-ignores="__init__.py:F401" --exclude="setup.py"
 
   bandit-check:
     steps:
@@ -208,7 +208,7 @@ jobs:
 
   sdist-deploy:
     docker:
-      - image: "circleci/python:3.6"
+      - image: "circleci/python:3.8"
     steps:
       - checkout
       - bootstrap-linux
@@ -218,9 +218,9 @@ jobs:
 
   wheels-manylinux-deploy:
     docker:
-      - image: "circleci/python:3.6"
+      - image: "circleci/python:3.8"
     environment:
-      - CIBW_BUILD: "cp36-manylinux_x86_64 cp37-manylinux_x86_64 cp38-manylinux_x86_64 cp39-manylinux_x86_64"
+      - CIBW_BUILD: "cp38-manylinux_x86_64 cp39-manylinux_x86_64 cp310-manylinux_x86_64"
       - CIBW_BEFORE_BUILD: "pip install cmake setuptools-scm -r requirements.txt && pip install -r requirements-dev.txt"
     steps:
       - checkout
@@ -232,7 +232,7 @@ jobs:
     macos:
       xcode: 11.0.0
     environment:
-      - CIBW_BUILD: "cp36-macosx_x86_64 cp37-macosx_x86_64 cp38-macosx_x86_64 cp39-macosx_x86_64"
+      - CIBW_BUILD: "cp38-macosx_x86_64 cp39-macosx_x86_64 cp310-macosx_x86_64"
       - CIBW_BEFORE_BUILD: "pip3 install cmake setuptools-scm -r requirements.txt && pip3 install -r requirements-dev.txt"
     steps:
       - checkout
@@ -245,9 +245,6 @@ workflows:
   linux-check:
     jobs:
       - python-check:
-          name: Python 3.6
-          version: "3.6"
-      - python-check:
           name: Python 3.7
           version: "3.7"
       - python-check:
@@ -256,12 +253,12 @@ workflows:
       - python-check:
           name: Python 3.9
           version: "3.9"
+      - python-check:
+          name: Python 3.10
+          version: "3.10"
 
   macos-check:
     jobs:
-      - python-macos-check:
-          name: MacOS Python 3.6
-          python-version: "3.6"
       - python-macos-check:
           name: MacOS Python 3.7
           python-version: "3.7"
@@ -271,12 +268,12 @@ workflows:
       - python-macos-check:
           name: MacOS Python 3.9
           python-version: "3.9"
+      - python-macos-check:
+          name: MacOS Python 3.10
+          python-version: "3.10"
 
   windows-check:
     jobs:
-      - python-win-check:
-          name: Win Python 3.6
-          python-version: "3.6"
       - python-win-check:
           name: Win Python 3.7
           python-version: "3.7"
@@ -286,6 +283,9 @@ workflows:
       - python-win-check:
           name: Win Python 3.9
           python-version: "3.9"
+      - python-win-check:
+          name: Win Python 3.10
+          python-version: "3.10"
 
   linux-deploy:
     jobs:
