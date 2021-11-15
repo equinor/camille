@@ -38,6 +38,11 @@ commands:
           command: |
             sudo apt-get update
             sudo apt-get install -y build-essential
+            sudo apt-get install -y libblas3 \
+                                    liblapack3 \
+                                    liblapack-dev \
+                                    libblas-dev
+            sudo apt-get install -y gfortran
 
   python-win-test:
     parameters:
@@ -224,6 +229,7 @@ jobs:
       - CIBW_BEFORE_BUILD: "pip install cmake setuptools-scm -r requirements.txt && pip install -r requirements-dev.txt"
     steps:
       - checkout
+      - bootstrap-linux
       - setup_remote_docker
       - create-wheel
       - upload-pypi
@@ -236,6 +242,7 @@ jobs:
       - CIBW_BEFORE_BUILD: "pip3 install cmake setuptools-scm -r requirements.txt && pip3 install -r requirements-dev.txt"
     steps:
       - checkout
+      - bootstrap-macos
       - create-wheel
       - upload-pypi
 
