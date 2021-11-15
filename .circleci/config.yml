@@ -253,9 +253,9 @@ workflows:
       - python-check:
           name: Python 3.9
           version: "3.9"
-      - python-check:
-          name: Python 3.10
-          version: "3.10"
+      # - python-check:
+      #     name: Python 3.10
+      #     version: "3.10"
 
   macos-check:
     jobs:
@@ -268,9 +268,9 @@ workflows:
       - python-macos-check:
           name: MacOS Python 3.9
           python-version: "3.9"
-      - python-macos-check:
-          name: MacOS Python 3.10
-          python-version: "3.10"
+      # - python-macos-check:
+      #     name: MacOS Python 3.10
+      #     python-version: "3.10"
 
   windows-check:
     jobs:
@@ -283,9 +283,9 @@ workflows:
       - python-win-check:
           name: Win Python 3.9
           python-version: "3.9"
-      - python-win-check:
-          name: Win Python 3.10
-          python-version: "3.10"
+      # - python-win-check:
+      #     name: Win Python 3.10
+      #     python-version: "3.10"
 
   linux-deploy:
     jobs:
