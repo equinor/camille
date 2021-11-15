@@ -242,7 +242,6 @@ jobs:
       - CIBW_BEFORE_BUILD: "pip3 install cmake setuptools-scm -r requirements.txt && pip3 install -r requirements-dev.txt"
     steps:
       - checkout
-      - bootstrap-macos
       - create-wheel
       - upload-pypi
 
