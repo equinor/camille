@@ -6,8 +6,8 @@ import requests
 
 
 urljoin = requests.compat.urljoin
-default_host = 'https://resource-zephyre-dev.playground.radix.equinor.com:443'
-default_scope = 'api://d87a78b5-431d-43a3-902a-8fc97e357395'
+default_host = 'https://resource-zephyre-prod.radix.equinor.com:443'
+default_scope = 'http://zephyre-apiSP-20190313101000'
 
 
 def isoformat(date):
@@ -56,7 +56,7 @@ class Zephyre:
 
     def __init__(self, host=default_host, scope=default_scope):
         self.host = host
-        self.scope = default_scope
+        self.scope = scope
 
     def _get_token(self):
         try:
