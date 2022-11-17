@@ -100,7 +100,7 @@ class OmniaDatabricks:
                 cursor.execute(query_measurement_id, {'tag': tag})
                 result = cursor.fetchall()
                 measurement_id = result[0]['measurementId']
-                
+
                 # Query the tag data
                 query_measurements = '''SELECT
                     cast(time as string) as t,
