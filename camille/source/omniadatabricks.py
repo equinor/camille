@@ -33,7 +33,7 @@ class OmniaDatabricks:
     import keyring
     from keyrings.alt.file import PlaintextKeyring as kr
     keyring.set_keyring(kr())
-    keyring.set_password('bf2o_token', 'token', '<YOUR-TOKEN>') must be set 
+    keyring.set_password('bf2o_token', 'token', '<YOUR-TOKEN>') must be set
 
     Examples
     --------
@@ -82,42 +82,42 @@ class OmniaDatabricks:
         if not start_date <= end_date:
             raise ValueError('start_date must be earlier than end_date')
 
-        with sql.connect(server_hostname = self.host,
-                             http_path = self.path,
-                             access_token = self.token) as connection:
+        with sql.connect(server_hostname=self.host,
+                         http_path=self.path,
+                         access_token=self.token) as connection:
 
             with connection.cursor() as cursor:
-              # Quuery for measurement ID
-              cursor.columns(table_name="measurement_meta_table")
-              query_measurement_id = '''
+                # Query for measurement ID
+                cursor.columns(table_name="measurement_meta_table")
+                query_measurement_id = '''
                 SELECT
-                  m.measurementId
+                    m.measurementId
                 FROM
-                  measurement_meta_table m
+                    measurement_meta_table m
                 WHERE
-                  m.measurementName = %(tag)s
-              '''
-              cursor.execute(query_measurement_id, {'tag': tag})
-              result  = cursor.fetchall()
-              measurement_id = result[0]['measurementId']
-
-              # Query the tag data
-              query_measurements = '''SELECT
-                  cast(time as string) as t,
-                  q,
-                  cast(v as double) v
-              FROM
-                  measurement_data_table_tagid_year ts
-              WHERE
-                  ts.year between %(year_start)s and %(year_end)s
-                  and ts.measurementId = %(measurement_id)s
-                  and %(start_date)s <= ts.time and ts.time < %(end_date)s
-              ORDER BY t
-              '''
-              cursor.execute(query_measurements, 
-                  {'year_start': start_date.year, 'year_end': end_date.year,
-                       'start_date': start_date, 'end_date': end_date,
-                       'measurement_id': measurement_id})
-              data = pd.DataFrame(cursor.fetchall(), 
-                                      columns=['time', 'quality', 'value'])
-              return parse_response(data)
+                    m.measurementName = %(tag)s
+                '''
+                cursor.execute(query_measurement_id, {'tag': tag})
+                result = cursor.fetchall()
+                measurement_id = result[0]['measurementId']
+                
+                # Query the tag data
+                query_measurements = '''SELECT
+                    cast(time as string) as t,
+                    q,
+                    cast(v as double) v
+                FROM
+                    measurement_data_table_tagid_year ts
+                WHERE
+                    ts.year between %(year_start)s and %(year_end)s
+                    and ts.measurementId = %(measurement_id)s
+                    and %(start_date)s <= ts.time and ts.time < %(end_date)s
+                ORDER BY t
+                '''
+                cursor.execute(query_measurements, {
+                    'year_start': start_date.year, 'year_end': end_date.year,
+                    'start_date': start_date, 'end_date': end_date,
+                    'measurement_id': measurement_id})
+                data = pd.DataFrame(cursor.fetchall(),
+                                    columns=['time', 'quality', 'value'])
+                return parse_response(data)
