@@ -6,3 +6,5 @@ pytz
 rainflow==2.2.0
 requests
 scipy
+keyring
+keyrings.alt
