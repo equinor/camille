@@ -7,11 +7,13 @@ from pytz import utc
 default_host = "adb-4244953073543257.17.azuredatabricks.net"
 default_path = "sql/protocolv1/o/4244953073543257/0120-144726-niche729"
 
+
 def isoformat(date):
     if date.tzinfo != utc:
         raise ValueError('Dates must be UTC')
     date = date.replace(tzinfo=None)
     return date.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
+
 
 def parse_response(df, tzinfo=utc):
     df.value = pd.to_numeric(df.value)
@@ -22,15 +24,16 @@ def parse_response(df, tzinfo=utc):
 
     return df.value
 
+
 class OmniaDatabricks:
     """OmniaDatabricks
-    Callable object that can be used to fetch time series from bf2o Databricks source.
+    Callable object that can be used to fetch time series from bf2o Databricks
     Notes
     -----
     import keyring
     from keyrings.alt.file import PlaintextKeyring as kr
     keyring.set_keyring(kr())
-    keyring.set_password('bf2o_token', 'token', '<YOUR-TOKEN>') must be set prior to use
+    keyring.set_password('bf2o_token', 'token', '<YOUR-TOKEN>') must be set 
 
     Examples
     --------
@@ -80,40 +83,41 @@ class OmniaDatabricks:
             raise ValueError('start_date must be earlier than end_date')
 
         with sql.connect(server_hostname = self.host,
-                        http_path       = self.path,
-                        access_token    = self.token) as connection:
+                             http_path = self.path,
+                             access_token = self.token) as connection:
 
-          with connection.cursor() as cursor:
-            # Quuery for measurement ID
-            cursor.columns(table_name="measurement_meta_table")
-            query_measurement_id = '''
-              SELECT
-                m.measurementId
+            with connection.cursor() as cursor:
+              # Quuery for measurement ID
+              cursor.columns(table_name="measurement_meta_table")
+              query_measurement_id = '''
+                SELECT
+                  m.measurementId
+                FROM
+                  measurement_meta_table m
+                WHERE
+                  m.measurementName = %(tag)s
+              '''
+              cursor.execute(query_measurement_id, {'tag': tag})
+              result  = cursor.fetchall()
+              measurement_id = result[0]['measurementId']
+
+              # Query the tag data
+              query_measurements = '''SELECT
+                  cast(time as string) as t,
+                  q,
+                  cast(v as double) v
               FROM
-                measurement_meta_table m
+                  measurement_data_table_tagid_year ts
               WHERE
-                m.measurementName = %(tag)s
-            '''
-            cursor.execute(query_measurement_id, {'tag': tag})
-            result  = cursor.fetchall()
-            measurement_id = result[0]['measurementId']
-            
-            # Query the tag data
-            query_measurements = '''SELECT
-                cast(time as string) as t,
-                q,
-                cast(v as double) v
-            FROM
-                measurement_data_table_tagid_year ts
-            WHERE
-                ts.year between %(year_start)s and %(year_end)s
-                and ts.measurementId = %(measurement_id)s
-                and %(start_date)s <= ts.time and ts.time < %(end_date)s
-            ORDER BY t
-            '''
-            cursor.execute(query_measurements, 
-                {'year_start': start_date.year, 'year_end': end_date.year, 
-                 'start_date': start_date, 'end_date': end_date, 
-                 'measurement_id': measurement_id})
-            data = pd.DataFrame(cursor.fetchall(), columns=['time', 'quality', 'value'])
-            return parse_response(data)
+                  ts.year between %(year_start)s and %(year_end)s
+                  and ts.measurementId = %(measurement_id)s
+                  and %(start_date)s <= ts.time and ts.time < %(end_date)s
+              ORDER BY t
+              '''
+              cursor.execute(query_measurements, 
+                  {'year_start': start_date.year, 'year_end': end_date.year,
+                       'start_date': start_date, 'end_date': end_date,
+                       'measurement_id': measurement_id})
+              data = pd.DataFrame(cursor.fetchall(), 
+                                      columns=['time', 'quality', 'value'])
+              return parse_response(data)
