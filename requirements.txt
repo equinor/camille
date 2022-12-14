@@ -8,3 +8,4 @@ requests
 scipy
 keyring
 keyrings.alt
+databricks-sql-connector
