@@ -107,15 +107,13 @@ class OmniaDatabricks:
                     q,
                     cast(v as double) v
                 FROM
-                    measurement_data_table_tagid_year ts
+                    measurement_data_table ts
                 WHERE
-                    ts.year between %(year_start)s and %(year_end)s
-                    and ts.measurementId = %(measurement_id)s
+                    ts.measurementId = %(measurement_id)s
                     and %(start_date)s <= ts.time and ts.time < %(end_date)s
                 ORDER BY t
                 '''
                 cursor.execute(query_measurements, {
-                    'year_start': start_date.year, 'year_end': end_date.year,
                     'start_date': start_date, 'end_date': end_date,
                     'measurement_id': measurement_id})
                 data = pd.DataFrame(cursor.fetchall(),
