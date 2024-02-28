@@ -18,10 +18,12 @@ Available functions
 from .bazefetcher import Bazefetcher, TagNotFoundError
 from .windiris import windiris
 from .zephyre import Zephyre
+from .omniadatabricks import OmniaDatabricks
 
 
 __all__ = [
     'Bazefetcher',
     'windiris',
     'Zephyre',
+    'OmniaDataBricks',
 ]

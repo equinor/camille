@@ -8,11 +8,9 @@ try:
 except pkg_resources.DistributionNotFound:
     pass
 
-from . import core, lidar, output, process, source, util
+from . import output, process, source, util
 
 __all__ = [
-    'core',
-    'lidar',
     'output',
     'process',
     'source',
