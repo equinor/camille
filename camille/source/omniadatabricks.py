@@ -33,7 +33,7 @@ class OmniaDatabricks:
     import keyring
     from keyrings.alt.file import PlaintextKeyring as kr
     keyring.set_keyring(kr())
-    keyring.set_password('bf2o_token', 'token', '<YOUR-TOKEN>') must be set
+    keyring.set_password('bf2o_token', 'token', '<YOUR-TOKEN>') # must be set
 
     Examples
     --------
@@ -84,7 +84,8 @@ class OmniaDatabricks:
 
         with sql.connect(server_hostname=self.host,
                          http_path=self.path,
-                         access_token=self.token) as connection:
+                         access_token=self.token,
+                         use_inline_params=True) as connection:
 
             with connection.cursor() as cursor:
                 # Query for measurement ID
