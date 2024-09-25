@@ -56,5 +56,5 @@ skbuild.setup(
     ],
 
     use_scm_version=True,
-    cmdclass = { 'test': setuptools.command.test.test },
+    # cmdclass = { 'test': setuptools.command.test.test },
 )
