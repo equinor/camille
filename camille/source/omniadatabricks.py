@@ -4,8 +4,8 @@ from keyrings.alt.file import PlaintextKeyring
 import pandas as pd
 from pytz import utc
 
-default_host = "adb-4244953073543257.17.azuredatabricks.net"
-default_path = "sql/protocolv1/o/4244953073543257/0120-144726-niche729"
+default_host = "adb-4565771875486299.19.azuredatabricks.net"
+default_path = "sql/protocolv1/o/4565771875486299/0927-060055-7rjbc249"
 
 
 def isoformat(date):
