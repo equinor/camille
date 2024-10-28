@@ -5,7 +5,7 @@ import pandas as pd
 from pytz import utc
 
 default_host = "adb-4565771875486299.19.azuredatabricks.net"
-default_path = "sql/protocolv1/o/4565771875486299/0927-060055-7rjbc249"
+default_path = "/sql/1.0/warehouses/58ee452966f1fd8f"
 
 
 def isoformat(date):
