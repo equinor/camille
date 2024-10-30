@@ -34,7 +34,7 @@ skbuild.setup(
     description='Camille Wind',
     url='http://github.com/Statoil/camille',
     install_requires=['numpy', 'pandas', 'scipy', 'rainflow', 'requests'],
-    test_suite='tests',
+    #test_suite='tests',
     setup_requires=[
         'pytest-runner',
         'setuptools >=28',
@@ -42,7 +42,7 @@ skbuild.setup(
         'cmake',
         'pybind11',
     ],
-    tests_require=['pytest', 'pytest-repeat'],
+    #tests_require=['pytest', 'pytest-repeat'],
     # we're building with the pybind11 fetched from pip. Since we don't rely on
     # a cmake-installed pybind there's also no find_package(pybind11) -
     # instead, the get include dirs from the package and give directly from
@@ -55,6 +55,6 @@ skbuild.setup(
         '-DCMAKE_OSX_DEPLOYMENT_TARGET=10.9',
     ],
 
-    use_scm_version=True,
+    #use_scm_version=True,
     # cmdclass = { 'test': setuptools.command.test.test },
 )
