@@ -19,7 +19,7 @@ def parse_response(df, tzinfo=utc):
     df.value = pd.to_numeric(df.value)
     df.time = pd.to_datetime(df.time, errors='coerce')
     df.set_index('time', inplace=True)
-    df.index = df.index.tz_localize(tzinfo)
+    #df.index = df.index.tz_localize(tzinfo)
     df.sort_index(inplace=True)
 
     return df.value
@@ -104,7 +104,7 @@ class OmniaDatabricks:
 
                 # Query the tag data
                 query_measurements = '''SELECT
-                    cast(time as string) as t,
+                    time as t,
                     q,
                     cast(v as double) v
                 FROM
