@@ -191,7 +191,7 @@ class LocalIO(AbstractIO):
         self.path = path
 
     def __enter__(self):
-        print(self.path)
+        #print(self.path)
         return pathlib.Path(self.path)
 
     def __exit__(self, exc_type, exc_value, trace):
